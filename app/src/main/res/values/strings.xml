@@ -1,4 +1,4 @@
-﻿<resources>
+<resources>
     <string name="app_name">clockdin</string>
     <string name="notif_channel_reminder_id">clockdin_reminder</string>
     <string name="notif_channel_reminder_name">Daily Reminder</string>

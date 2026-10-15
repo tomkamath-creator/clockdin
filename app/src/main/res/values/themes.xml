@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- Base theme: fully transparent; Compose handles everything -->
     <style name="Theme.Clockdin" parent="android:Theme.Material.NoTitleBar">
