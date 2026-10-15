@@ -2,7 +2,9 @@ name: Build Clockdin APK
 
 on:
   push:
-    branches: [ main ]
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
   workflow_dispatch:
 
 jobs:
@@ -20,7 +22,10 @@ jobs:
           cache: 'gradle'
 
       - name: Grant Execute Permission to Gradle Wrapper
-        run: chmod +x gradlew || true
+        run: chmod +x gradlew
+
+      - name: Run Unit Tests
+        run: ./gradlew testDebugUnitTest --stacktrace
 
       - name: Build Debug APK
         run: ./gradlew assembleDebug --stacktrace
@@ -30,4 +35,5 @@ jobs:
         with:
           name: clockdin-debug-apk
           path: app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
           retention-days: 7
