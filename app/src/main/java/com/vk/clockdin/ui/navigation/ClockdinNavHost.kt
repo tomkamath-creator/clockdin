@@ -98,21 +98,28 @@ fun ClockdinNavHost(
         composable(
             route = Screen.Detail.route,
             arguments = listOf(navArgument("entryId") { type = NavType.LongType })
-        ) { backStackEntry ->
-            val entryId = backStackEntry.arguments?.getLong("entryId") ?: 0L
-            NavigationPlaceholderScreen(
-                title = "Entry #$entryId",
-                onBack = { navController.popBackStack() }
+        ) {
+            com.vk.clockdin.ui.detail.EntryDetailScreen(
+                onBack = { navController.popBackStack() },
+                onOpenPhoto = { path ->
+                    navController.navigate(Screen.PhotoViewer.createRoute(path))
+                }
             )
         }
 
         composable(
             route = Screen.PhotoViewer.route,
             arguments = listOf(navArgument("photoPath") { type = NavType.StringType })
-        ) {
-            NavigationPlaceholderScreen(
-                title = "Photo Viewer",
-                onBack = { navController.popBackStack() }
+        ) { backStackEntry ->
+            val encodedPath = backStackEntry.arguments?.getString("photoPath") ?: ""
+            val decodedPath = try {
+                java.net.URLDecoder.decode(encodedPath, java.nio.charset.StandardCharsets.UTF_8.name())
+            } catch (_: Exception) {
+                encodedPath
+            }
+            com.vk.clockdin.ui.detail.FullScreenPhotoViewer(
+                photoPath = decodedPath,
+                onClose = { navController.popBackStack() }
             )
         }
     }

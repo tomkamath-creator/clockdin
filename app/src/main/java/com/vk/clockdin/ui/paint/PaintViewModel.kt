@@ -24,7 +24,8 @@ import javax.inject.Inject
 class PaintViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val moodColorRepository: MoodColorRepository,
-    private val settingsRepository: SettingsRepository
+    private val settingsRepository: SettingsRepository,
+    val saveEntryUseCase: com.vk.clockdin.domain.usecase.SaveEntryUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(PaintUiState())

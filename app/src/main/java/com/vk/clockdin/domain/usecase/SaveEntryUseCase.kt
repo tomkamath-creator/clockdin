@@ -56,4 +56,11 @@ class SaveEntryUseCase @Inject constructor(
             throw e
         }
     }
+
+    /**
+     * Directly persists a [MoodEntry] whose orb and optional photo files are already saved on disk.
+     */
+    suspend operator fun invoke(entry: MoodEntry): Long = withContext(Dispatchers.IO) {
+        moodEntryRepository.insertEntry(entry)
+    }
 }

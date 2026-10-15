@@ -45,6 +45,8 @@ import androidx.compose.ui.window.Dialog
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.vk.clockdin.domain.model.GradientStop
+import com.vk.clockdin.ui.save.SaveEntryBottomSheet
+import com.vk.clockdin.ui.save.SaveTrajectoryAnimation
 import com.vk.clockdin.ui.theme.ClockdinMotion
 import com.vk.clockdin.ui.theme.GlassBorderHairline
 import com.vk.clockdin.ui.theme.GlassSurfaceLow
@@ -70,9 +72,17 @@ fun PaintScreen(
     var showDiscardDialog by remember { mutableStateOf(false) }
     var measuredCanvasSize by remember { mutableFloatStateOf(512f) }
 
+    // Save bottom sheet and flight animation state
+    var saveSheetPayload by remember { mutableStateOf<Pair<String, List<GradientStop>>?>(null) }
+    var trajectoryPayload by remember { mutableStateOf<Pair<String, List<GradientStop>>?>(null) }
+
     // Intercept back gesture for unsaved changes confirmation
     BackHandler(enabled = true) {
-        if (uiState.hasUnsavedChanges || uiState.strokes.isNotEmpty()) {
+        if (trajectoryPayload != null) {
+            // Trajectory in flight, ignore back
+        } else if (saveSheetPayload != null) {
+            saveSheetPayload = null
+        } else if (uiState.hasUnsavedChanges || uiState.strokes.isNotEmpty()) {
             showDiscardDialog = true
         } else {
             onBack()
@@ -84,7 +94,7 @@ fun PaintScreen(
         viewModel.events.collect { event ->
             when (event) {
                 is PaintEvent.ProceedToSave -> {
-                    onProceedToSave(event.orbImagePath, event.dominantColors)
+                    saveSheetPayload = Pair(event.orbImagePath, event.dominantColors)
                 }
                 is PaintEvent.ShowDiscardConfirm -> {
                     showDiscardDialog = true
@@ -174,6 +184,32 @@ fun PaintScreen(
                 onConfirmDiscard = {
                     showDiscardDialog = false
                     onBack()
+                }
+            )
+        }
+
+        // 5. Save Entry Glass Bottom Sheet
+        saveSheetPayload?.let { (orbPath, colors) ->
+            SaveEntryBottomSheet(
+                orbImagePath = orbPath,
+                dominantColors = colors,
+                saveEntryUseCase = viewModel.saveEntryUseCase,
+                onDismiss = { saveSheetPayload = null },
+                onSaveSuccess = { savedEntry ->
+                    saveSheetPayload = null
+                    trajectoryPayload = Pair(savedEntry.orbImagePath, savedEntry.gradientStops)
+                }
+            )
+        }
+
+        // 6. Cubic Bézier Flight Trajectory Animation
+        trajectoryPayload?.let { (orbPath, colors) ->
+            SaveTrajectoryAnimation(
+                orbImagePath = orbPath,
+                dominantColors = colors,
+                onAnimationComplete = {
+                    trajectoryPayload = null
+                    onProceedToSave(orbPath, colors)
                 }
             )
         }
