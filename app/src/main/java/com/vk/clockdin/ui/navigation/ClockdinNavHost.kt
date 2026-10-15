@@ -68,23 +68,59 @@ fun ClockdinNavHost(
         }
 
         composable(route = Screen.List.route) {
-            NavigationPlaceholderScreen(
-                title = "Journal List",
-                onBack = { navController.popBackStack() }
+            com.vk.clockdin.ui.list.JournalListScreen(
+                onNavigateToPerspective = { perspective ->
+                    if (perspective.route == Screen.Galaxy.route) {
+                        navController.navigate(Screen.Galaxy.route) {
+                            popUpTo(Screen.Galaxy.route) { inclusive = true }
+                        }
+                    } else {
+                        navController.navigate(perspective.route) {
+                            popUpTo(Screen.Galaxy.route)
+                        }
+                    }
+                },
+                onNavigateToSettings = { navController.navigate(Screen.Settings.route) },
+                onNavigateToPaint = { navController.navigate(Screen.Paint.route) },
+                onEntryClick = { id -> navController.navigate(Screen.Detail.createRoute(id)) }
             )
         }
 
         composable(route = Screen.Calendar.route) {
-            NavigationPlaceholderScreen(
-                title = "Calendar",
-                onBack = { navController.popBackStack() }
+            com.vk.clockdin.ui.calendar.CalendarScreen(
+                onNavigateToPerspective = { perspective ->
+                    if (perspective.route == Screen.Galaxy.route) {
+                        navController.navigate(Screen.Galaxy.route) {
+                            popUpTo(Screen.Galaxy.route) { inclusive = true }
+                        }
+                    } else {
+                        navController.navigate(perspective.route) {
+                            popUpTo(Screen.Galaxy.route)
+                        }
+                    }
+                },
+                onNavigateToSettings = { navController.navigate(Screen.Settings.route) },
+                onNavigateToPaint = { navController.navigate(Screen.Paint.route) },
+                onEntryClick = { id -> navController.navigate(Screen.Detail.createRoute(id)) }
             )
         }
 
         composable(route = Screen.Ribbon.route) {
-            NavigationPlaceholderScreen(
-                title = "Timeline Ribbon",
-                onBack = { navController.popBackStack() }
+            com.vk.clockdin.ui.ribbon.RibbonScreen(
+                onNavigateToPerspective = { perspective ->
+                    if (perspective.route == Screen.Galaxy.route) {
+                        navController.navigate(Screen.Galaxy.route) {
+                            popUpTo(Screen.Galaxy.route) { inclusive = true }
+                        }
+                    } else {
+                        navController.navigate(perspective.route) {
+                            popUpTo(Screen.Galaxy.route)
+                        }
+                    }
+                },
+                onNavigateToSettings = { navController.navigate(Screen.Settings.route) },
+                onNavigateToPaint = { navController.navigate(Screen.Paint.route) },
+                onEntryClick = { id -> navController.navigate(Screen.Detail.createRoute(id)) }
             )
         }
 
