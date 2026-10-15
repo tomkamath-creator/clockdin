@@ -1,0 +1,8 @@
+﻿<resources>
+    <string name="app_name">clockdin</string>
+    <string name="notif_channel_reminder_id">clockdin_reminder</string>
+    <string name="notif_channel_reminder_name">Daily Reminder</string>
+    <string name="notif_channel_reminder_desc">Reminds you to log your mood for the day</string>
+    <string name="notif_reminder_title">How are you feeling today?</string>
+    <string name="notif_reminder_body">Tap to paint your mood orb in clockdin</string>
+</resources>
