@@ -125,8 +125,7 @@ fun ClockdinNavHost(
         }
 
         composable(route = Screen.Settings.route) {
-            NavigationPlaceholderScreen(
-                title = "Settings",
+            com.vk.clockdin.ui.settings.SettingsScreen(
                 onBack = { navController.popBackStack() }
             )
         }
@@ -156,33 +155,6 @@ fun ClockdinNavHost(
             com.vk.clockdin.ui.detail.FullScreenPhotoViewer(
                 photoPath = decodedPath,
                 onClose = { navController.popBackStack() }
-            )
-        }
-    }
-}
-
-
-
-@Composable
-private fun NavigationPlaceholderScreen(
-    title: String,
-    onBack: () -> Unit
-) {
-    Scaffold(
-        modifier = Modifier
-            .fillMaxSize()
-            .spaceBackground(),
-        containerColor = androidx.compose.ui.graphics.Color.Transparent
-    ) { innerPadding ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = title,
-                color = TextSecondary
             )
         }
     }
