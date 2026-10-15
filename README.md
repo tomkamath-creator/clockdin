@@ -45,8 +45,8 @@ app/src/main/java/com/vk/clockdin/
 | Phase | Description | Status |
 |---|---|---|
 | **Phase 1** | Project scaffold, Hilt, Room, DataStore, Theme, Navigation skeleton, Unit tests | ✅ Completed |
-| **Phase 2** | Galaxy 3D engine, stars/dust/beads, AGSL glow shader, gestures, Galaxy Home | ⏳ Up Next |
-| **Phase 3** | Orb painting screen (brush + radial gradient builder), palette selector | ⏳ Upcoming |
+| **Phase 2** | Galaxy 3D engine, stars/dust/beads, AGSL glow shader, gestures, Galaxy Home | ✅ Completed |
+| **Phase 3** | Orb painting screen (brush + radial gradient builder), palette selector | ⏳ Up Next |
 | **Phase 4** | Save flow sheet, Bézier trajectory animation, Detail modal, photo viewer | ⏳ Upcoming |
 | **Phase 5** | Alternative perspectives (Journal list, Calendar month grid, Ribbon timeline) | ⏳ Upcoming |
 | **Phase 6** | Palette editor, WorkManager reminder, offline zip backup/restore, Drive provider | ⏳ Upcoming |
