@@ -254,7 +254,8 @@ fun SaveEntryBottomSheet(
                     color = if (noteText.length >= 480) Color(0xFFFF5376) else TextDisabled,
                     fontSize = 11.sp,
                     modifier = Modifier.align(Alignment.End)
-
+                )
+            }
 
             // 4. Photo Attachment (Camera + Gallery)
             Column(

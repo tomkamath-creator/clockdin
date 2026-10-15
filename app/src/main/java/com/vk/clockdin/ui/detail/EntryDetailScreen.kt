@@ -262,6 +262,8 @@ fun EntryDetailScreen(
                                 )
                             }
                         }
+                    }
+
                     Spacer(modifier = Modifier.height(10.dp))
 
                     // 5. Journal Note (if present)
