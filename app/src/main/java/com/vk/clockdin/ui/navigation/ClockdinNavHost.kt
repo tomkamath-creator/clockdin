@@ -49,7 +49,7 @@ fun ClockdinNavHost(
             route = Screen.Galaxy.route,
             enterTransition = { fadeIn(animationSpec = tween(600)) }
         ) {
-            GalaxySkeletonScreen(
+            com.vk.clockdin.ui.galaxy.GalaxyHomeScreen(
                 onNavigateToPaint = { navController.navigate(Screen.Paint.route) },
                 onNavigateToSettings = { navController.navigate(Screen.Settings.route) },
                 onNavigateToView = { route -> navController.navigate(route) },
@@ -115,25 +115,7 @@ fun ClockdinNavHost(
     }
 }
 
-@Composable
-private fun GalaxySkeletonScreen(
-    onNavigateToPaint: () -> Unit,
-    onNavigateToSettings: () -> Unit,
-    onNavigateToView: (String) -> Unit,
-    onOpenDetail: (Long) -> Unit
-) {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .spaceBackground(),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = "Galaxy",
-            color = TextSecondary
-        )
-    }
-}
+
 
 @Composable
 private fun NavigationPlaceholderScreen(

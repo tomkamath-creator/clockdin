@@ -88,7 +88,16 @@ fun IntroSplashScreen(
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = stringResource(R.string.wordmark_subtitle),
-                style = WordmarkSubtitleStyle
+                style = WordmarkSubtitleStyle.copy(
+                    brush = androidx.compose.ui.graphics.Brush.horizontalGradient(
+                        colors = listOf(
+                            com.vk.clockdin.ui.theme.MoodJoy,
+                            com.vk.clockdin.ui.theme.MoodLoving,
+                            com.vk.clockdin.ui.theme.MoodAnxious,
+                            com.vk.clockdin.ui.theme.MoodCalm
+                        )
+                    )
+                )
             )
         }
     }
