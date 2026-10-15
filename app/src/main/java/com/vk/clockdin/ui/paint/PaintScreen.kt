@@ -6,6 +6,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -46,10 +47,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.vk.clockdin.domain.model.GradientStop
 import com.vk.clockdin.ui.theme.ClockdinMotion
 import com.vk.clockdin.ui.theme.GlassBorderHairline
-import com.vk.clockdin.ui.theme.GlassSurfaceHigh
 import com.vk.clockdin.ui.theme.GlassSurfaceLow
 import com.vk.clockdin.ui.theme.GlassSurfaceMedium
-import com.vk.clockdin.ui.theme.MoodExhaustion
+import com.vk.clockdin.ui.theme.GlassSurfaceUltraLow
+import com.vk.clockdin.ui.theme.MoodAngry
 import com.vk.clockdin.ui.theme.TextPrimary
 import com.vk.clockdin.ui.theme.TextSecondary
 import com.vk.clockdin.ui.theme.TextTertiary
@@ -207,7 +208,7 @@ private fun BrushSizeSelector(
 
     Row(
         modifier = modifier
-            .glassCard(shape = RoundedCornerShape(20.dp), surfaceAlpha = 0.05f)
+            .glassCard(shape = RoundedCornerShape(20.dp), fillColor = GlassSurfaceUltraLow)
             .padding(horizontal = 12.dp, vertical = 6.dp),
         horizontalArrangement = Arrangement.spacedBy(16.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -249,7 +250,7 @@ private fun GradientModeHelper(
 ) {
     Row(
         modifier = modifier
-            .glassCard(shape = RoundedCornerShape(16.dp), surfaceAlpha = 0.04f)
+            .glassCard(shape = RoundedCornerShape(16.dp), fillColor = GlassSurfaceUltraLow)
             .padding(horizontal = 16.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -280,7 +281,7 @@ private fun DiscardConfirmationDialog(
         Box(
             modifier = Modifier
                 .fillMaxWidth(0.92f)
-                .glassCard(shape = RoundedCornerShape(28.dp), surfaceAlpha = 0.16f)
+                .glassCard(shape = RoundedCornerShape(28.dp), fillColor = GlassSurfaceMedium)
                 .padding(24.dp)
         ) {
             Column(
@@ -312,7 +313,7 @@ private fun DiscardConfirmationDialog(
                         modifier = Modifier
                             .weight(1f)
                             .height(44.dp)
-                            .glassCard(shape = RoundedCornerShape(22.dp), surfaceAlpha = 0.08f)
+                            .glassCard(shape = RoundedCornerShape(22.dp), fillColor = GlassSurfaceLow)
                             .clickable(
                                 interactionSource = remember { MutableInteractionSource() },
                                 indication = null,
@@ -334,8 +335,8 @@ private fun DiscardConfirmationDialog(
                             .weight(1f)
                             .height(44.dp)
                             .clip(RoundedCornerShape(22.dp))
-                            .background(MoodExhaustion.copy(alpha = 0.35f))
-                            .border(1.dp, MoodExhaustion.copy(alpha = 0.6f), RoundedCornerShape(22.dp))
+                            .background(MoodAngry.copy(alpha = 0.35f))
+                            .border(1.dp, MoodAngry.copy(alpha = 0.6f), RoundedCornerShape(22.dp))
                             .clickable(
                                 interactionSource = remember { MutableInteractionSource() },
                                 indication = null,

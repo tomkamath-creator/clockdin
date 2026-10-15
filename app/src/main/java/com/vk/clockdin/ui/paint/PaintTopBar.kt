@@ -45,6 +45,7 @@ import com.vk.clockdin.ui.theme.ClockdinMotion
 import com.vk.clockdin.ui.theme.GlassBorderHairline
 import com.vk.clockdin.ui.theme.GlassSurfaceLow
 import com.vk.clockdin.ui.theme.GlassSurfaceMedium
+import com.vk.clockdin.ui.theme.GlassSurfaceUltraLow
 import com.vk.clockdin.ui.theme.TextPrimary
 import com.vk.clockdin.ui.theme.TextSecondary
 import com.vk.clockdin.ui.theme.TextTertiary
@@ -85,7 +86,7 @@ fun PaintTopBar(
         Box(
             modifier = Modifier
                 .size(40.dp)
-                .glassCard(shape = CircleShape, surfaceAlpha = 0.08f)
+                .glassCard(shape = CircleShape, fillColor = GlassSurfaceLow)
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null,
@@ -105,7 +106,7 @@ fun PaintTopBar(
         Box(
             modifier = Modifier
                 .height(38.dp)
-                .glassCard(shape = RoundedCornerShape(20.dp), surfaceAlpha = 0.06f)
+                .glassCard(shape = RoundedCornerShape(20.dp), fillColor = GlassSurfaceUltraLow)
                 .padding(3.dp),
             contentAlignment = Alignment.CenterStart
         ) {
@@ -197,7 +198,7 @@ fun PaintTopBar(
                 Box(
                     modifier = Modifier
                         .size(36.dp)
-                        .glassCard(shape = CircleShape, surfaceAlpha = 0.06f)
+                        .glassCard(shape = CircleShape, fillColor = GlassSurfaceUltraLow)
                         .clickable(
                             enabled = canUndo,
                             interactionSource = remember { MutableInteractionSource() },
@@ -218,7 +219,7 @@ fun PaintTopBar(
                 Box(
                     modifier = Modifier
                         .size(36.dp)
-                        .glassCard(shape = CircleShape, surfaceAlpha = 0.06f)
+                        .glassCard(shape = CircleShape, fillColor = GlassSurfaceUltraLow)
                         .clickable(
                             enabled = canClear,
                             interactionSource = remember { MutableInteractionSource() },
@@ -242,7 +243,7 @@ fun PaintTopBar(
                     .height(36.dp)
                     .glassCard(
                         shape = RoundedCornerShape(18.dp),
-                        surfaceAlpha = 0.15f
+                        fillColor = GlassSurfaceMedium
                     )
                     .background(
                         Brush.horizontalGradient(
