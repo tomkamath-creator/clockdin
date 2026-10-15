@@ -4,8 +4,10 @@ package com.vk.clockdin.ui.list
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.vk.clockdin.domain.model.MoodEntry
+import com.vk.clockdin.domain.model.WeeklyMoodStats
 import com.vk.clockdin.domain.repository.MoodEntryRepository
 import com.vk.clockdin.domain.usecase.CalculateStreakUseCase
+import com.vk.clockdin.domain.usecase.CalculateWeeklyMoodStatsUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -21,13 +23,15 @@ import javax.inject.Inject
 data class JournalListUiState(
     val groupedEntries: Map<String, List<MoodEntry>> = emptyMap(),
     val streakCount: Int = 0,
+    val weeklyStats: WeeklyMoodStats = WeeklyMoodStats(),
     val isLoading: Boolean = true
 )
 
 @HiltViewModel
 class JournalListViewModel @Inject constructor(
     private val moodEntryRepository: MoodEntryRepository,
-    private val calculateStreakUseCase: CalculateStreakUseCase
+    private val calculateStreakUseCase: CalculateStreakUseCase,
+    private val calculateWeeklyMoodStatsUseCase: CalculateWeeklyMoodStatsUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(JournalListUiState())
@@ -42,6 +46,7 @@ class JournalListViewModel @Inject constructor(
             moodEntryRepository.getAllEntries().collectLatest { entries ->
                 val dates = entries.map { it.localDate }
                 val streak = calculateStreakUseCase(dates)
+                val weekly = calculateWeeklyMoodStatsUseCase(entries)
 
                 // Group entries by "MMMM yyyy" (e.g. "October 2026")
                 val grouped = entries.groupBy { entry ->
@@ -57,6 +62,7 @@ class JournalListViewModel @Inject constructor(
                     it.copy(
                         groupedEntries = grouped,
                         streakCount = streak,
+                        weeklyStats = weekly,
                         isLoading = false
                     )
                 }

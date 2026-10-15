@@ -96,16 +96,33 @@ fun GalaxyHomeScreen(
                 modifier = Modifier.fillMaxSize()
             )
 
-            // Minimal Glass Header
-            GalaxyTopBar(
-                streakCount = uiState.streakCount,
-                currentPerspective = GalaxyPerspective.GALAXY,
-                onPerspectiveSelected = { perspective ->
-                    viewModel.onViewSelected(perspective.route)
-                },
-                onSettingsClick = { viewModel.onSettingsClicked() },
-                modifier = Modifier.align(Alignment.TopCenter)
-            )
+            // Minimal Glass Header & Weekly Mood Percentage Breakdown
+            androidx.compose.foundation.layout.Column(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                GalaxyTopBar(
+                    streakCount = uiState.streakCount,
+                    currentPerspective = GalaxyPerspective.GALAXY,
+                    onPerspectiveSelected = { perspective ->
+                        viewModel.onViewSelected(perspective.route)
+                    },
+                    onSettingsClick = { viewModel.onSettingsClicked() },
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                if (uiState.weeklyStats.totalEntriesThisWeek > 0 && uiState.weeklyStats.majorityMood != null) {
+                    WeeklyMoodPercentageCard(
+                        stats = uiState.weeklyStats,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 20.dp)
+                    )
+                }
+            }
 
             // Glowing Floating Action Button "+"
             GalaxyFab(

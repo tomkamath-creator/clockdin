@@ -11,17 +11,18 @@ import kotlin.math.sin
 import kotlin.random.Random
 
 /**
- * 3D Star particle on the background celestial sphere.
+ * 3D Star particle traveling through space toward the camera (infinite cosmic fly-through).
  */
 class StarParticle(
-    var x: Float,
-    var y: Float,
-    var z: Float,
+    val initialX: Float,
+    val initialY: Float,
+    val initialZ: Float,
     val baseRadius: Float,
     val color: Color,
     val twinklePhase: Float,
     val twinkleSpeed: Float,
-    val driftSpeed: Float
+    val warpSpeed: Float,
+    val driftVx: Float
 ) {
     var screenX: Float = 0f
     var screenY: Float = 0f
@@ -32,33 +33,38 @@ class StarParticle(
 }
 
 /**
- * Ambient dust speck floating gently within the galaxy core.
+ * Ambient dust speck floating and drifting across the camera viewport.
  */
 class DustParticle(
-    var x: Float,
-    var y: Float,
-    var z: Float,
+    val initialX: Float,
+    val initialY: Float,
+    val initialZ: Float,
     val radius: Float,
     val color: Color,
+    val driftVx: Float,
+    val driftVy: Float,
+    val driftVz: Float,
     val driftPhaseX: Float,
-    val driftPhaseY: Float,
-    val driftPhaseZ: Float
+    val driftPhaseY: Float
 ) {
     var screenX: Float = 0f
     var screenY: Float = 0f
     var depth: Float = 0f
     var scale: Float = 1f
-    var alpha: Float = 0.15f
+    var alpha: Float = 0.55f
     var isVisible: Boolean = false
 }
 
 /**
- * Volumetric 3D cosmic nebula (space cloud) with smooth radial falloff.
+ * Volumetric 3D cosmic nebula (space cloud) continuously drifting across and through the screen.
  */
 class NebulaCloud(
-    val x: Float,
-    val y: Float,
-    val z: Float,
+    val initialX: Float,
+    val initialY: Float,
+    val initialZ: Float,
+    val speedX: Float,
+    val speedY: Float,
+    val speedZ: Float,
     val baseRadius: Float,
     val innerColor: Color,
     val outerColor: Color
@@ -110,40 +116,56 @@ class GalaxyParticleEngine(
     init {
         val random = Random(42) // Fixed seed for reproducible ambient sky
 
-        // 1. Volumetric 3D cosmic nebulae (space clouds)
+        // 1. Volumetric 3D cosmic nebulae (space clouds) drifting through the galaxy
         nebulae = arrayOf(
             NebulaCloud(
-                x = -260f, y = -140f, z = -120f,
+                initialX = -1200f, initialY = -350f, initialZ = -100f,
+                speedX = 38f, speedY = 14f, speedZ = 8f,
+                baseRadius = 380f,
+                innerColor = Color(0x487B1FA2), // Violet nebula
+                outerColor = Color.Transparent
+            ),
+            NebulaCloud(
+                initialX = 800f, initialY = 400f, initialZ = 50f,
+                speedX = -32f, speedY = -18f, speedZ = -10f,
                 baseRadius = 340f,
-                innerColor = Color(0x3D7B1FA2), // Violet nebula
+                innerColor = Color(0x4200B4D8), // Vibrant cyan space cloud
                 outerColor = Color.Transparent
             ),
             NebulaCloud(
-                x = 240f, y = 170f, z = -60f,
-                baseRadius = 310f,
-                innerColor = Color(0x3500897B), // Cyan/emerald space cloud
+                initialX = -400f, initialY = 900f, initialZ = -150f,
+                speedX = 25f, speedY = -34f, speedZ = 12f,
+                baseRadius = 350f,
+                innerColor = Color(0x3FFF8F00), // Amber solar flare cloud
                 outerColor = Color.Transparent
             ),
             NebulaCloud(
-                x = 80f, y = -210f, z = 160f,
-                baseRadius = 280f,
-                innerColor = Color(0x28FFA000), // Amber dust nebula
+                initialX = 1100f, initialY = -500f, initialZ = 120f,
+                speedX = -36f, speedY = 20f, speedZ = -6f,
+                baseRadius = 360f,
+                innerColor = Color(0x463F51B5), // Deep cobalt galaxy dust
                 outerColor = Color.Transparent
             ),
             NebulaCloud(
-                x = -130f, y = 230f, z = 100f,
+                initialX = -700f, initialY = -800f, initialZ = -80f,
+                speedX = 30f, speedY = 28f, speedZ = 14f,
+                baseRadius = 330f,
+                innerColor = Color(0x40FF4081), // Magenta astral cloud
+                outerColor = Color.Transparent
+            ),
+            NebulaCloud(
+                initialX = 300f, initialY = 1100f, initialZ = 80f,
+                speedX = -24f, speedY = -28f, speedZ = -8f,
                 baseRadius = 320f,
-                innerColor = Color(0x333F51B5), // Deep cobalt cloud
+                innerColor = Color(0x3E00897B), // Emerald cosmic mist
                 outerColor = Color.Transparent
             )
         )
 
-        // 2. Generate celestial stars distributed spherically
+        // 2. Generate celestial stars traveling forward through cosmic depth
         stars = Array(starCount) { i ->
             val theta = random.nextFloat() * 2f * Math.PI.toFloat()
-            val phi = (random.nextFloat() * 2f - 1f)
-            val r = 900f + random.nextFloat() * 450f
-            val cosPhi = kotlin.math.sqrt((1f - phi * phi).coerceAtLeast(0f))
+            val r = 250f + random.nextFloat() * 850f
 
             val starColor = when (random.nextInt(4)) {
                 0 -> Color(0xFFFFFFFF) // Pure white
@@ -153,38 +175,42 @@ class GalaxyParticleEngine(
             }
 
             StarParticle(
-                x = r * cosPhi * cos(theta),
-                y = r * phi,
-                z = r * cosPhi * sin(theta),
+                initialX = r * cos(theta),
+                initialY = (random.nextFloat() * 2f - 1f) * 900f,
+                initialZ = (random.nextFloat() * 2f - 1f) * 1100f,
                 baseRadius = 1.0f + random.nextFloat() * 2.2f,
                 color = starColor,
                 twinklePhase = random.nextFloat() * 6.28f,
-                twinkleSpeed = 0.0015f + random.nextFloat() * 0.003f,
-                driftSpeed = 0.00003f + random.nextFloat() * 0.00004f
+                twinkleSpeed = 0.002f + random.nextFloat() * 0.004f,
+                warpSpeed = 55f + random.nextFloat() * 85f,
+                driftVx = (random.nextFloat() * 2f - 1f) * 15f
             )
         }
 
-        // 3. Generate atmospheric dust specks
+        // 3. Generate atmospheric dust specks drifting across the viewport
         dust = Array(dustCount) {
-            val r = 120f + random.nextFloat() * 480f
-            val theta = random.nextFloat() * 6.28f
-            val y = (random.nextFloat() * 2f - 1f) * 350f
+            val x = (random.nextFloat() * 2f - 1f) * 800f
+            val y = (random.nextFloat() * 2f - 1f) * 700f
+            val z = (random.nextFloat() * 2f - 1f) * 600f
 
-            val dustColor = when (random.nextInt(3)) {
-                0 -> Color(0x33B8A9E8) // Lavender mist dust
-                1 -> Color(0x332FD4A7) // Emerald dust
-                else -> Color(0x33FFC83D) // Amber dust
+            val dustColor = when (random.nextInt(4)) {
+                0 -> Color(0x66B8A9E8) // Lavender mist dust
+                1 -> Color(0x662FD4A7) // Emerald dust
+                2 -> Color(0x66FFC83D) // Amber dust
+                else -> Color(0x6600E5FF) // Cyan astral dust
             }
 
             DustParticle(
-                x = r * cos(theta),
-                y = y,
-                z = r * sin(theta),
-                radius = 1.0f + random.nextFloat() * 2.0f,
+                initialX = x,
+                initialY = y,
+                initialZ = z,
+                radius = 1.2f + random.nextFloat() * 2.5f,
                 color = dustColor,
+                driftVx = 25f + random.nextFloat() * 45f,
+                driftVy = 12f + random.nextFloat() * 30f,
+                driftVz = 15f + random.nextFloat() * 35f,
                 driftPhaseX = random.nextFloat() * 6.28f,
-                driftPhaseY = random.nextFloat() * 6.28f,
-                driftPhaseZ = random.nextFloat() * 6.28f
+                driftPhaseY = random.nextFloat() * 6.28f
             )
         }
     }
@@ -238,25 +264,28 @@ class GalaxyParticleEngine(
     ): List<BeadRenderItem> {
         val timeSeconds = timeNanos / 1_000_000_000f
 
-        // 1. Update and project volumetric space clouds (nebulae) with dynamic 3D drift and swirl
+        // 1. Update and project volumetric space clouds (nebulae) drifting across and through viewport
+        val spanX = 3000f
+        val spanY = 2400f
+        val spanZ = 1200f
+
         for (i in nebulae.indices) {
             val nebula = nebulae[i]
-            val orbitAngle = timeSeconds * 0.05f + i * 1.57f
-            val cosO = cos(orbitAngle * 0.5f)
-            val sinO = sin(orbitAngle * 0.5f)
+            val rawNx = nebula.initialX + timeSeconds * nebula.speedX
+            val nx = (((rawNx + spanX / 2f) % spanX + spanX) % spanX) - spanX / 2f
 
-            // Dynamic orbital drift across X, Y, Z
-            val nx = nebula.x * cosO - nebula.z * sinO * 0.4f + sin(timeSeconds * 0.12f + i * 1.4f) * 75f
-            val ny = nebula.y + cos(timeSeconds * 0.10f + i * 2.2f) * 60f
-            val nz = nebula.z * cosO + nebula.x * sinO * 0.4f + cos(timeSeconds * 0.14f + i * 0.9f) * 65f
+            val rawNy = nebula.initialY + timeSeconds * nebula.speedY
+            val ny = (((rawNy + spanY / 2f) % spanY + spanY) % spanY) - spanY / 2f
 
-            // Organic breathing in cloud radius
-            val dynamicRadius = nebula.baseRadius * (1f + 0.14f * sin(timeSeconds * 0.22f + i * 1.1f))
+            val rawNz = nebula.initialZ + timeSeconds * nebula.speedZ
+            val nz = (((rawNz + spanZ / 2f) % spanZ + spanZ) % spanZ) - spanZ / 2f
+
+            val dynamicRadius = nebula.baseRadius * (1f + 0.16f * sin(timeSeconds * 0.35f + i * 1.2f))
 
             val projected = FibonacciSphere.project(
                 point = Point3D(nx, ny, nz),
-                yawRad = yaw * 0.75f, // subtle parallax drift
-                pitchRad = pitch * 0.75f,
+                yawRad = yaw * 0.5f,
+                pitchRad = pitch * 0.5f,
                 centerX = centerX,
                 centerY = centerY,
                 zoom = zoom * 0.9f,
@@ -273,16 +302,22 @@ class GalaxyParticleEngine(
                     projected.screenY in (-nebula.radius)..(viewportHeight + nebula.radius)
         }
 
-        // 2. Update and project background stars
+        // 2. Update and project background stars traveling forward (cosmic fly-through)
+        val starZSpan = 2200f
         for (i in 0 until starCount) {
             val star = stars[i]
+            val rawZ = star.initialZ - timeSeconds * star.warpSpeed
+            val curZ = (((rawZ + 1400f) % starZSpan + starZSpan) % starZSpan) - 800f
+            val curX = star.initialX + sin(timeSeconds * 0.2f + star.twinklePhase) * 35f + star.driftVx * (timeSeconds % 60f)
+            val curY = star.initialY + cos(timeSeconds * 0.15f + star.twinklePhase) * 25f
+
             val projected = FibonacciSphere.project(
-                point = Point3D(star.x, star.y, star.z),
-                yawRad = yaw + star.driftSpeed * timeSeconds,
-                pitchRad = pitch,
+                point = Point3D(curX, curY, curZ),
+                yawRad = yaw * 0.85f,
+                pitchRad = pitch * 0.85f,
                 centerX = centerX,
                 centerY = centerY,
-                zoom = zoom * 0.85f, // Subtle parallax
+                zoom = zoom,
                 focal = 1100f
             )
 
@@ -291,20 +326,27 @@ class GalaxyParticleEngine(
             star.depth = projected.depth
             star.scale = projected.scale
 
-            val twinkle = (0.4f + 0.6f * sin(timeSeconds * star.twinkleSpeed * 1000f + star.twinklePhase)).coerceIn(0.1f, 1f)
+            val twinkle = (0.4f + 0.6f * sin(timeSeconds * star.twinkleSpeed * 1000f + star.twinklePhase)).coerceIn(0.15f, 1f)
             star.alpha = twinkle
 
             star.isVisible = projected.screenX in -50f..(viewportWidth + 50f) &&
                     projected.screenY in -50f..(viewportHeight + 50f)
         }
 
-        // 3. Update and project dust particles
+        // 3. Update and project dust particles drifting across screen
+        val dSpanX = 1800f
+        val dSpanY = 1600f
+        val dSpanZ = 1400f
         for (i in 0 until dustCount) {
             val d = dust[i]
-            // Gentle wandering offset
-            val dx = d.x + sin(timeSeconds * 0.4f + d.driftPhaseX) * 20f
-            val dy = d.y + cos(timeSeconds * 0.3f + d.driftPhaseY) * 15f
-            val dz = d.z + sin(timeSeconds * 0.5f + d.driftPhaseZ) * 20f
+            val rawDx = d.initialX + timeSeconds * d.driftVx
+            val dx = (((rawDx + dSpanX / 2f) % dSpanX + dSpanX) % dSpanX) - dSpanX / 2f + sin(timeSeconds * 0.7f + d.driftPhaseX) * 25f
+
+            val rawDy = d.initialY + timeSeconds * d.driftVy
+            val dy = (((rawDy + dSpanY / 2f) % dSpanY + dSpanY) % dSpanY) - dSpanY / 2f + cos(timeSeconds * 0.6f + d.driftPhaseY) * 20f
+
+            val rawDz = d.initialZ + timeSeconds * d.driftVz
+            val dz = (((rawDz + dSpanZ / 2f) % dSpanZ + dSpanZ) % dSpanZ) - dSpanZ / 2f
 
             val projected = FibonacciSphere.project(
                 point = Point3D(dx, dy, dz),

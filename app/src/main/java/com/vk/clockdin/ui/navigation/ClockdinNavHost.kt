@@ -1,17 +1,17 @@
 // Location: app/src/main/java/com/vk/clockdin/ui/navigation/ClockdinNavHost.kt
 package com.vk.clockdin.ui.navigation
 
-import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -19,8 +19,6 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.vk.clockdin.ui.splash.IntroSplashScreen
-import com.vk.clockdin.ui.theme.TextSecondary
-import com.vk.clockdin.ui.theme.spaceBackground
 
 @Composable
 fun ClockdinNavHost(
@@ -30,7 +28,31 @@ fun ClockdinNavHost(
     NavHost(
         navController = navController,
         startDestination = Screen.Splash.route,
-        modifier = modifier
+        modifier = modifier,
+        enterTransition = {
+            slideInHorizontally(
+                initialOffsetX = { fullWidth -> (fullWidth * 0.12f).toInt() },
+                animationSpec = tween(380, easing = FastOutSlowInEasing)
+            ) + fadeIn(animationSpec = tween(380, easing = FastOutSlowInEasing))
+        },
+        exitTransition = {
+            slideOutHorizontally(
+                targetOffsetX = { fullWidth -> -(fullWidth * 0.12f).toInt() },
+                animationSpec = tween(320, easing = FastOutSlowInEasing)
+            ) + fadeOut(animationSpec = tween(320, easing = FastOutSlowInEasing))
+        },
+        popEnterTransition = {
+            slideInHorizontally(
+                initialOffsetX = { fullWidth -> -(fullWidth * 0.12f).toInt() },
+                animationSpec = tween(380, easing = FastOutSlowInEasing)
+            ) + fadeIn(animationSpec = tween(380, easing = FastOutSlowInEasing))
+        },
+        popExitTransition = {
+            slideOutHorizontally(
+                targetOffsetX = { fullWidth -> (fullWidth * 0.12f).toInt() },
+                animationSpec = tween(320, easing = FastOutSlowInEasing)
+            ) + fadeOut(animationSpec = tween(320, easing = FastOutSlowInEasing))
+        }
     ) {
         composable(
             route = Screen.Splash.route,
@@ -57,11 +79,24 @@ fun ClockdinNavHost(
             )
         }
 
-        composable(route = Screen.Paint.route) {
+        composable(
+            route = Screen.Paint.route,
+            enterTransition = {
+                slideInVertically(
+                    initialOffsetY = { (it * 0.22f).toInt() },
+                    animationSpec = tween(400, easing = FastOutSlowInEasing)
+                ) + fadeIn(animationSpec = tween(400, easing = FastOutSlowInEasing))
+            },
+            exitTransition = {
+                slideOutVertically(
+                    targetOffsetY = { (it * 0.22f).toInt() },
+                    animationSpec = tween(350, easing = FastOutSlowInEasing)
+                ) + fadeOut(animationSpec = tween(350, easing = FastOutSlowInEasing))
+            }
+        ) {
             com.vk.clockdin.ui.paint.PaintScreen(
                 onBack = { navController.popBackStack() },
-                onProceedToSave = { orbImagePath, dominantColors ->
-                    // Handled in Phase 4 save flow; for now pop back or hold path
+                onProceedToSave = { _, _ ->
                     navController.popBackStack()
                 }
             )
@@ -124,7 +159,21 @@ fun ClockdinNavHost(
             )
         }
 
-        composable(route = Screen.Settings.route) {
+        composable(
+            route = Screen.Settings.route,
+            enterTransition = {
+                slideInHorizontally(
+                    initialOffsetX = { it },
+                    animationSpec = tween(380, easing = FastOutSlowInEasing)
+                ) + fadeIn(animationSpec = tween(380, easing = FastOutSlowInEasing))
+            },
+            exitTransition = {
+                slideOutHorizontally(
+                    targetOffsetX = { it },
+                    animationSpec = tween(320, easing = FastOutSlowInEasing)
+                ) + fadeOut(animationSpec = tween(320, easing = FastOutSlowInEasing))
+            }
+        ) {
             com.vk.clockdin.ui.settings.SettingsScreen(
                 onBack = { navController.popBackStack() }
             )
@@ -132,7 +181,19 @@ fun ClockdinNavHost(
 
         composable(
             route = Screen.Detail.route,
-            arguments = listOf(navArgument("entryId") { type = NavType.LongType })
+            arguments = listOf(navArgument("entryId") { type = NavType.LongType }),
+            enterTransition = {
+                slideInVertically(
+                    initialOffsetY = { (it * 0.16f).toInt() },
+                    animationSpec = tween(380, easing = FastOutSlowInEasing)
+                ) + fadeIn(animationSpec = tween(380, easing = FastOutSlowInEasing))
+            },
+            exitTransition = {
+                slideOutVertically(
+                    targetOffsetY = { (it * 0.16f).toInt() },
+                    animationSpec = tween(320, easing = FastOutSlowInEasing)
+                ) + fadeOut(animationSpec = tween(320, easing = FastOutSlowInEasing))
+            }
         ) {
             com.vk.clockdin.ui.detail.EntryDetailScreen(
                 onBack = { navController.popBackStack() },
@@ -144,7 +205,13 @@ fun ClockdinNavHost(
 
         composable(
             route = Screen.PhotoViewer.route,
-            arguments = listOf(navArgument("photoPath") { type = NavType.StringType })
+            arguments = listOf(navArgument("photoPath") { type = NavType.StringType }),
+            enterTransition = {
+                fadeIn(animationSpec = tween(300)) + scaleIn(initialScale = 0.92f, animationSpec = tween(300))
+            },
+            exitTransition = {
+                fadeOut(animationSpec = tween(250)) + scaleOut(targetScale = 0.92f, animationSpec = tween(250))
+            }
         ) { backStackEntry ->
             val encodedPath = backStackEntry.arguments?.getString("photoPath") ?: ""
             val decodedPath = try {

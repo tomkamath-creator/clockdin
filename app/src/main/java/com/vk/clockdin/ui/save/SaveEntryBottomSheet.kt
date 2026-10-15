@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -88,14 +89,14 @@ fun SaveEntryBottomSheet(
     val scope = rememberCoroutineScope()
 
     var noteText by remember { mutableStateOf("") }
-    var attachedPhotoPath by remember { mutableStateOf<String?>(null) }
+    var attachedPhotoPaths by remember { mutableStateOf<List<String>>(emptyList()) }
     var isSaving by remember { mutableStateOf(false) }
     var isProcessingPhoto by remember { mutableStateOf(false) }
 
     // Camera capture state
     var pendingCameraUri by remember { mutableStateOf<Uri?>(null) }
 
-    // ActivityResult Launcher for Camera
+    // ActivityResult Launcher for Camera (appends photo)
     val cameraLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.TakePicture()
     ) { success ->
@@ -103,21 +104,30 @@ fun SaveEntryBottomSheet(
             scope.launch {
                 isProcessingPhoto = true
                 val compressedPath = PhotoCompressor.processAndSavePhoto(context, pendingCameraUri!!)
-                attachedPhotoPath = compressedPath
+                if (compressedPath != null && attachedPhotoPaths.size < 6) {
+                    attachedPhotoPaths = attachedPhotoPaths + compressedPath
+                }
                 isProcessingPhoto = false
             }
         }
     }
 
-    // ActivityResult Launcher for Gallery (PickVisualMedia - no storage permission required on Android 14+)
+    // ActivityResult Launcher for Gallery (PickMultipleVisualMedia up to 6 items)
     val galleryLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.PickVisualMedia()
-    ) { uri ->
-        if (uri != null) {
+        contract = ActivityResultContracts.PickMultipleVisualMedia(maxItems = 6)
+    ) { uris ->
+        if (!uris.isNullOrEmpty()) {
             scope.launch {
                 isProcessingPhoto = true
-                val compressedPath = PhotoCompressor.processAndSavePhoto(context, uri)
-                attachedPhotoPath = compressedPath
+                val newPaths = mutableListOf<String>()
+                for (uri in uris) {
+                    if (attachedPhotoPaths.size + newPaths.size >= 6) break
+                    val compressedPath = PhotoCompressor.processAndSavePhoto(context, uri)
+                    if (compressedPath != null) {
+                        newPaths.add(compressedPath)
+                    }
+                }
+                attachedPhotoPaths = attachedPhotoPaths + newPaths
                 isProcessingPhoto = false
             }
         }
@@ -257,56 +267,103 @@ fun SaveEntryBottomSheet(
                 )
             }
 
-            // 4. Photo Attachment (Camera + Gallery)
+            // 4. Photo Attachment (Multiple Photos Support)
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Text(
-                    text = "Photo Memory (optional)",
-                    fontSize = 12.sp,
-                    color = TextSecondary,
-                    fontWeight = FontWeight.Medium
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = if (attachedPhotoPaths.isEmpty()) "Photo Memories (optional)" else "Photo Memories (${attachedPhotoPaths.size}/6)",
+                        fontSize = 12.sp,
+                        color = TextSecondary,
+                        fontWeight = FontWeight.Medium
+                    )
 
-                if (attachedPhotoPath != null) {
-                    // Photo preview with delete button
+                    if (attachedPhotoPaths.isNotEmpty()) {
+                        Text(
+                            text = "Add up to 6",
+                            fontSize = 11.sp,
+                            color = TextDisabled
+                        )
+                    }
+                }
+
+                if (attachedPhotoPaths.isNotEmpty()) {
+                    // Horizontal scroll of attached photos with individual remove buttons + Add more button
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .size(72.dp)
-                                .clip(RoundedCornerShape(14.dp))
-                                .border(1.dp, GlassBorderHairline, RoundedCornerShape(14.dp))
-                        ) {
-                            AsyncImage(
-                                model = File(attachedPhotoPath!!),
-                                contentDescription = "Attached Photo",
-                                modifier = Modifier.fillMaxWidth(),
-                                contentScale = ContentScale.Crop
-                            )
+                        attachedPhotoPaths.forEachIndexed { index, path ->
+                            Box(
+                                modifier = Modifier
+                                    .size(76.dp)
+                                    .clip(RoundedCornerShape(14.dp))
+                                    .border(1.dp, GlassBorderHairline, RoundedCornerShape(14.dp))
+                            ) {
+                                AsyncImage(
+                                    model = File(path),
+                                    contentDescription = "Attached Photo $index",
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentScale = ContentScale.Crop
+                                )
+
+                                // Individual remove button
+                                Box(
+                                    modifier = Modifier
+                                        .align(Alignment.TopEnd)
+                                        .padding(4.dp)
+                                        .size(20.dp)
+                                        .clip(CircleShape)
+                                        .background(Color(0xD9E53935))
+                                        .clickable {
+                                            attachedPhotoPaths = attachedPhotoPaths.toMutableList().also { it.removeAt(index) }
+                                        },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Close,
+                                        contentDescription = "Remove photo",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(13.dp)
+                                    )
+                                }
+                            }
                         }
 
-                        Box(
-                            modifier = Modifier
-                                .glassCard(shape = RoundedCornerShape(12.dp), fillColor = GlassSurfaceUltraLow)
-                                .clickable { attachedPhotoPath = null }
-                                .padding(horizontal = 10.dp, vertical = 6.dp)
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        // Add More button if under limit
+                        if (attachedPhotoPaths.size < 6) {
+                            Box(
+                                modifier = Modifier
+                                    .size(76.dp)
+                                    .glassCard(shape = RoundedCornerShape(14.dp), fillColor = GlassSurfaceUltraLow)
+                                    .clickable(enabled = !isProcessingPhoto) {
+                                        galleryLauncher.launch(
+                                            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                                        )
+                                    },
+                                contentAlignment = Alignment.Center
                             ) {
-                                Icon(
-                                    imageVector = Icons.Default.Close,
-                                    contentDescription = "Remove photo",
-                                    tint = Color(0xFFFF5376),
-                                    modifier = Modifier.size(14.dp)
-                                )
-                                Text("Remove", color = Color(0xFFFF5376), fontSize = 12.sp)
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.PhotoLibrary,
+                                        contentDescription = "Add More",
+                                        tint = TextPrimary,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                    Text("+ Add", color = TextSecondary, fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                                }
                             }
                         }
                     }
@@ -412,7 +469,7 @@ fun SaveEntryBottomSheet(
                                 gradientStops = dominantColors,
                                 orbImagePath = orbImagePath,
                                 note = noteText.ifBlank { null },
-                                photoPath = attachedPhotoPath,
+                                photoPath = if (attachedPhotoPaths.isEmpty()) null else attachedPhotoPaths.joinToString("||"),
                                 songTitle = null,
                                 songArtist = null
                             )

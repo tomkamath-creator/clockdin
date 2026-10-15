@@ -50,6 +50,7 @@ import com.vk.clockdin.domain.model.MoodEntry
 import com.vk.clockdin.ui.galaxy.GalaxyFab
 import com.vk.clockdin.ui.galaxy.GalaxyPerspective
 import com.vk.clockdin.ui.galaxy.GalaxyTopBar
+import com.vk.clockdin.ui.galaxy.WeeklyMoodPercentageCard
 import com.vk.clockdin.ui.theme.GlassBorderHairline
 import com.vk.clockdin.ui.theme.GlassSurfaceLow
 import com.vk.clockdin.ui.theme.GlassSurfaceMedium
@@ -164,6 +165,18 @@ fun JournalListScreen(
                     contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
+                    if (uiState.weeklyStats.totalEntriesThisWeek > 0 && uiState.weeklyStats.majorityMood != null) {
+                        item(key = "weekly_mood_stats_banner") {
+                            WeeklyMoodPercentageCard(
+                                stats = uiState.weeklyStats,
+                                initiallyExpanded = true,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 4.dp)
+                            )
+                        }
+                    }
+
                     uiState.groupedEntries.forEach { (monthHeader, entries) ->
                         item(key = "header_$monthHeader") {
                             Text(

@@ -27,4 +27,16 @@ data class MoodEntry(
     val photoPath: String? = null,
     val songTitle: String? = null,
     val songArtist: String? = null
-)
+) {
+    val photoPaths: List<String>
+        get() = if (photoPath.isNullOrBlank()) {
+            emptyList()
+        } else {
+            photoPath.split("||").map { it.trim() }.filter { it.isNotEmpty() }
+        }
+
+    fun withPhotos(photos: List<String>): MoodEntry = copy(
+        photoPath = if (photos.isEmpty()) null else photos.joinToString("||")
+    )
+}
+

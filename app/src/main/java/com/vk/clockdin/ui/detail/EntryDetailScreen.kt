@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -284,47 +285,114 @@ fun EntryDetailScreen(
                         }
                     }
 
-                    // 6. Attached Photo Memory (if present)
-                    if (!entry.photoPath.isNullOrBlank()) {
-                        val photoFile = File(entry.photoPath)
-                        if (photoFile.exists()) {
-                            Spacer(modifier = Modifier.height(14.dp))
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 24.dp)
-                                    .clip(RoundedCornerShape(22.dp))
-                                    .border(1.dp, GlassBorderHairline, RoundedCornerShape(22.dp))
-                                    .clickable { onOpenPhoto(entry.photoPath) }
-                            ) {
-                                AsyncImage(
-                                    model = photoFile,
-                                    contentDescription = "Photo Memory",
+                    // 6. Attached Photo Memories (if present)
+                    val photos = remember(entry.photoPath) { entry.photoPaths }
+                    if (photos.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(14.dp))
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 24.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            Text(
+                                text = if (photos.size == 1) "Photo Memory" else "Photo Memories (${photos.size})",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = TextSecondary
+                            )
+
+                            if (photos.size == 1) {
+                                val photoFile = File(photos.first())
+                                if (photoFile.exists()) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clip(RoundedCornerShape(22.dp))
+                                            .border(1.dp, GlassBorderHairline, RoundedCornerShape(22.dp))
+                                            .clickable { onOpenPhoto(photos.first()) }
+                                    ) {
+                                        AsyncImage(
+                                            model = photoFile,
+                                            contentDescription = "Photo Memory",
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .height(220.dp),
+                                            contentScale = ContentScale.Crop
+                                        )
+
+                                        // Tap to expand hint
+                                        Box(
+                                            modifier = Modifier
+                                                .align(Alignment.BottomEnd)
+                                                .padding(12.dp)
+                                                .glassCard(shape = RoundedCornerShape(12.dp), fillColor = Color.Black.copy(alpha = 0.60f))
+                                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                                        ) {
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Default.ZoomIn,
+                                                    contentDescription = null,
+                                                    tint = TextPrimary,
+                                                    modifier = Modifier.size(14.dp)
+                                                )
+                                                Text("Tap to enlarge", color = TextPrimary, fontSize = 11.sp)
+                                            }
+                                        }
+                                    }
+                                }
+                            } else {
+                                // Horizontal scrollable row of photos
+                                Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .height(220.dp),
-                                    contentScale = ContentScale.Crop
-                                )
-
-                                // Tap to expand hint
-                                Box(
-                                    modifier = Modifier
-                                        .align(Alignment.BottomEnd)
-                                        .padding(12.dp)
-                                        .glassCard(shape = RoundedCornerShape(12.dp), fillColor = Color.Black.copy(alpha = 0.60f))
-                                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                                        .horizontalScroll(rememberScrollState()),
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                                 ) {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.ZoomIn,
-                                            contentDescription = null,
-                                            tint = TextPrimary,
-                                            modifier = Modifier.size(14.dp)
-                                        )
-                                        Text("Tap to enlarge", color = TextPrimary, fontSize = 11.sp)
+                                    photos.forEachIndexed { index, path ->
+                                        val file = File(path)
+                                        if (file.exists()) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .width(170.dp)
+                                                    .height(170.dp)
+                                                    .clip(RoundedCornerShape(18.dp))
+                                                    .border(1.dp, GlassBorderHairline, RoundedCornerShape(18.dp))
+                                                    .clickable { onOpenPhoto(path) }
+                                            ) {
+                                                AsyncImage(
+                                                    model = file,
+                                                    contentDescription = "Photo Memory $index",
+                                                    modifier = Modifier.fillMaxSize(),
+                                                    contentScale = ContentScale.Crop
+                                                )
+
+                                                // Tap to expand hint
+                                                Box(
+                                                    modifier = Modifier
+                                                        .align(Alignment.BottomEnd)
+                                                        .padding(8.dp)
+                                                        .glassCard(shape = RoundedCornerShape(10.dp), fillColor = Color.Black.copy(alpha = 0.60f))
+                                                        .padding(horizontal = 6.dp, vertical = 3.dp)
+                                                ) {
+                                                    Row(
+                                                        verticalAlignment = Alignment.CenterVertically,
+                                                        horizontalArrangement = Arrangement.spacedBy(3.dp)
+                                                    ) {
+                                                        Icon(
+                                                            imageVector = Icons.Default.ZoomIn,
+                                                            contentDescription = null,
+                                                            tint = TextPrimary,
+                                                            modifier = Modifier.size(12.dp)
+                                                        )
+                                                        Text("View", color = TextPrimary, fontSize = 10.sp)
+                                                    }
+                                                }
+                                            }
+                                        }
                                     }
                                 }
                             }

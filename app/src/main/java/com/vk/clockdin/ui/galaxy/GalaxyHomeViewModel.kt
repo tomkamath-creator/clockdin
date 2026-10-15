@@ -4,9 +4,11 @@ package com.vk.clockdin.ui.galaxy
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.vk.clockdin.domain.model.MoodEntry
+import com.vk.clockdin.domain.model.WeeklyMoodStats
 import com.vk.clockdin.domain.repository.MoodEntryRepository
 import com.vk.clockdin.domain.repository.SettingsRepository
 import com.vk.clockdin.domain.usecase.CalculateStreakUseCase
+import com.vk.clockdin.domain.usecase.CalculateWeeklyMoodStatsUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
@@ -25,6 +27,7 @@ data class GalaxyHomeUiState(
     val streakCount: Int = 0,
     val hasEntryToday: Boolean = false,
     val hapticsEnabled: Boolean = true,
+    val weeklyStats: WeeklyMoodStats = WeeklyMoodStats(),
     val isLoading: Boolean = false
 )
 
@@ -40,7 +43,8 @@ sealed interface GalaxyEvent {
 class GalaxyHomeViewModel @Inject constructor(
     private val moodEntryRepository: MoodEntryRepository,
     private val settingsRepository: SettingsRepository,
-    private val calculateStreakUseCase: CalculateStreakUseCase
+    private val calculateStreakUseCase: CalculateStreakUseCase,
+    private val calculateWeeklyMoodStatsUseCase: CalculateWeeklyMoodStatsUseCase
 ) : ViewModel() {
 
     private val _eventChannel = Channel<GalaxyEvent>(Channel.BUFFERED)
@@ -54,12 +58,14 @@ class GalaxyHomeViewModel @Inject constructor(
         val allDates = entries.map { it.localDate }
         val streak = calculateStreakUseCase(dates = allDates)
         val hasToday = entries.any { it.localDate == todayStr }
+        val weekly = calculateWeeklyMoodStatsUseCase(entries)
 
         GalaxyHomeUiState(
             entries = entries,
             streakCount = streak,
             hasEntryToday = hasToday,
             hapticsEnabled = settings.hapticsEnabled,
+            weeklyStats = weekly,
             isLoading = false
         )
     }.stateIn(
