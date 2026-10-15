@@ -58,9 +58,12 @@ fun ClockdinNavHost(
         }
 
         composable(route = Screen.Paint.route) {
-            NavigationPlaceholderScreen(
-                title = "Paint Orb",
-                onBack = { navController.popBackStack() }
+            com.vk.clockdin.ui.paint.PaintScreen(
+                onBack = { navController.popBackStack() },
+                onProceedToSave = { orbImagePath, dominantColors ->
+                    // Handled in Phase 4 save flow; for now pop back or hold path
+                    navController.popBackStack()
+                }
             )
         }
 

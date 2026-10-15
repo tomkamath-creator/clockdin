@@ -231,7 +231,24 @@ fun GalaxyCanvas(
             timeNanos = frameTimeNanos
         )
 
-        // 1. Draw celestial stars
+        // 1. Draw volumetric 3D space clouds (cosmic nebulae)
+        val nebulae = engine.nebulae
+        for (i in nebulae.indices) {
+            val n = nebulae[i]
+            if (!n.isVisible) continue
+
+            drawCircle(
+                brush = Brush.radialGradient(
+                    colors = listOf(n.innerColor, n.outerColor),
+                    center = Offset(n.screenX, n.screenY),
+                    radius = n.radius
+                ),
+                radius = n.radius,
+                center = Offset(n.screenX, n.screenY)
+            )
+        }
+
+        // 2. Draw celestial stars
         val stars = engine.stars
         for (i in stars.indices) {
             val star = stars[i]

@@ -53,6 +53,25 @@ class DustParticle(
 }
 
 /**
+ * Volumetric 3D cosmic nebula (space cloud) with smooth radial falloff.
+ */
+class NebulaCloud(
+    val x: Float,
+    val y: Float,
+    val z: Float,
+    val baseRadius: Float,
+    val innerColor: Color,
+    val outerColor: Color
+) {
+    var screenX: Float = 0f
+    var screenY: Float = 0f
+    var depth: Float = 0f
+    var scale: Float = 1f
+    var radius: Float = 300f
+    var isVisible: Boolean = false
+}
+
+/**
  * High-performance container for an entry bead projected in 3D.
  */
 class BeadRenderItem(
@@ -81,6 +100,7 @@ class GalaxyParticleEngine(
 ) {
     val stars: Array<StarParticle>
     val dust: Array<DustParticle>
+    val nebulae: Array<NebulaCloud>
     var beads: List<BeadRenderItem> = emptyList()
         private set
 
@@ -90,7 +110,35 @@ class GalaxyParticleEngine(
     init {
         val random = Random(42) // Fixed seed for reproducible ambient sky
 
-        // 1. Generate celestial stars distributed spherically
+        // 1. Volumetric 3D cosmic nebulae (space clouds)
+        nebulae = arrayOf(
+            NebulaCloud(
+                x = -260f, y = -140f, z = -120f,
+                baseRadius = 340f,
+                innerColor = Color(0x3D7B1FA2), // Violet nebula
+                outerColor = Color.Transparent
+            ),
+            NebulaCloud(
+                x = 240f, y = 170f, z = -60f,
+                baseRadius = 310f,
+                innerColor = Color(0x3500897B), // Cyan/emerald space cloud
+                outerColor = Color.Transparent
+            ),
+            NebulaCloud(
+                x = 80f, y = -210f, z = 160f,
+                baseRadius = 280f,
+                innerColor = Color(0x28FFA000), // Amber dust nebula
+                outerColor = Color.Transparent
+            ),
+            NebulaCloud(
+                x = -130f, y = 230f, z = 100f,
+                baseRadius = 320f,
+                innerColor = Color(0x333F51B5), // Deep cobalt cloud
+                outerColor = Color.Transparent
+            )
+        )
+
+        // 2. Generate celestial stars distributed spherically
         stars = Array(starCount) { i ->
             val theta = random.nextFloat() * 2f * Math.PI.toFloat()
             val phi = (random.nextFloat() * 2f - 1f)
@@ -116,7 +164,7 @@ class GalaxyParticleEngine(
             )
         }
 
-        // 2. Generate atmospheric dust specks
+        // 3. Generate atmospheric dust specks
         dust = Array(dustCount) {
             val r = 120f + random.nextFloat() * 480f
             val theta = random.nextFloat() * 6.28f
@@ -175,7 +223,7 @@ class GalaxyParticleEngine(
     }
 
     /**
-     * Projects and sorts all particles and beads.
+     * Projects and sorts all particles, space clouds, and beads.
      * Runs every frame with ZERO object allocations.
      */
     fun projectAndSort(
@@ -190,7 +238,30 @@ class GalaxyParticleEngine(
     ): List<BeadRenderItem> {
         val timeSeconds = timeNanos / 1_000_000_000f
 
-        // 1. Update and project background stars
+        // 1. Update and project volumetric space clouds (nebulae)
+        for (i in nebulae.indices) {
+            val nebula = nebulae[i]
+            val projected = FibonacciSphere.project(
+                point = Point3D(nebula.x, nebula.y, nebula.z),
+                yawRad = yaw * 0.75f, // subtle parallax drift
+                pitchRad = pitch * 0.75f,
+                centerX = centerX,
+                centerY = centerY,
+                zoom = zoom * 0.9f,
+                focal = 1100f
+            )
+
+            nebula.screenX = projected.screenX
+            nebula.screenY = projected.screenY
+            nebula.depth = projected.depth
+            nebula.scale = projected.scale
+            nebula.radius = nebula.baseRadius * projected.scale
+
+            nebula.isVisible = projected.screenX in (-nebula.radius)..(viewportWidth + nebula.radius) &&
+                    projected.screenY in (-nebula.radius)..(viewportHeight + nebula.radius)
+        }
+
+        // 2. Update and project background stars
         for (i in 0 until starCount) {
             val star = stars[i]
             val projected = FibonacciSphere.project(
@@ -215,7 +286,7 @@ class GalaxyParticleEngine(
                     projected.screenY in -50f..(viewportHeight + 50f)
         }
 
-        // 2. Update and project dust particles
+        // 3. Update and project dust particles
         for (i in 0 until dustCount) {
             val d = dust[i]
             // Gentle wandering offset
@@ -242,7 +313,7 @@ class GalaxyParticleEngine(
                     projected.screenY in -50f..(viewportHeight + 50f)
         }
 
-        // 3. Project entry beads
+        // 4. Project entry beads
         for (i in beads.indices) {
             val bead = beads[i]
             val projected = FibonacciSphere.project(

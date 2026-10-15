@@ -2,8 +2,15 @@
 package com.vk.clockdin.ui.splash
 
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,24 +21,32 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.vk.clockdin.R
 import com.vk.clockdin.ui.theme.WordmarkStyle
-import com.vk.clockdin.ui.theme.WordmarkSubtitleStyle
 import com.vk.clockdin.ui.theme.spaceBackground
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /**
  * Animated intro splash screen:
- * "clockdin" in large, thin, frosted-white type with "by vk" below in smaller, lower-alpha text.
- * Fade + slight spring scale-in, holds ~1s, then navigates to Galaxy Home.
+ * Displays cosmic space clouds (nebulae) in the background, frosted-white "clockdin" wordmark,
+ * and an ultra-vivid, glowing colorful "by vk" subtitle.
  */
 @Composable
 fun IntroSplashScreen(
@@ -41,8 +56,19 @@ fun IntroSplashScreen(
     val alphaAnim = remember { Animatable(0f) }
     val scaleAnim = remember { Animatable(0.92f) }
 
+    // Ambient floating nebula pulse animation
+    val infiniteTransition = rememberInfiniteTransition(label = "splash_nebula")
+    val cloudPulse by infiniteTransition.animateFloat(
+        initialValue = 0.85f,
+        targetValue = 1.15f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 3000, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "cloud_pulse"
+    )
+
     LaunchedEffect(Unit) {
-        // Animate alpha and scale concurrently using spring physics
         launch {
             alphaAnim.animateTo(
                 targetValue = 1f,
@@ -62,8 +88,8 @@ fun IntroSplashScreen(
             )
         }
 
-        // Hold for ~1s as specified
-        delay(1100L)
+        // Hold ~1.2s before cross-fading to Galaxy Home
+        delay(1200L)
         onSplashComplete()
     }
 
@@ -73,6 +99,56 @@ fun IntroSplashScreen(
             .spaceBackground(),
         contentAlignment = Alignment.Center
     ) {
+        // Space clouds (cosmic nebulae) in background
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val cx = size.width / 2f
+            val cy = size.height / 2f
+
+            // Nebula 1: Deep cosmic violet cloud
+            drawCircle(
+                brush = Brush.radialGradient(
+                    colors = listOf(
+                        Color(0x357B1FA2),
+                        Color(0x184A148C),
+                        Color.Transparent
+                    ),
+                    center = Offset(cx - 80f, cy - 60f),
+                    radius = 320f * cloudPulse
+                ),
+                radius = 320f * cloudPulse,
+                center = Offset(cx - 80f, cy - 60f)
+            )
+
+            // Nebula 2: Ethereal cyan/teal space cloud
+            drawCircle(
+                brush = Brush.radialGradient(
+                    colors = listOf(
+                        Color(0x3000897B),
+                        Color(0x12004D40),
+                        Color.Transparent
+                    ),
+                    center = Offset(cx + 90f, cy + 50f),
+                    radius = 280f * cloudPulse
+                ),
+                radius = 280f * cloudPulse,
+                center = Offset(cx + 90f, cy + 50f)
+            )
+
+            // Nebula 3: Soft warm gold cosmic dust center
+            drawCircle(
+                brush = Brush.radialGradient(
+                    colors = listOf(
+                        Color(0x22FFA000),
+                        Color.Transparent
+                    ),
+                    center = Offset(cx, cy + 10f),
+                    radius = 190f * cloudPulse
+                ),
+                radius = 190f * cloudPulse,
+                center = Offset(cx, cy + 10f)
+            )
+        }
+
         Column(
             modifier = Modifier
                 .scale(scaleAnim.value)
@@ -85,17 +161,29 @@ fun IntroSplashScreen(
                 text = stringResource(R.string.app_name),
                 style = WordmarkStyle
             )
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // Ultra-vivid, colorful, glowing "by vk"
             Text(
                 text = stringResource(R.string.wordmark_subtitle),
-                style = WordmarkSubtitleStyle.copy(
-                    brush = androidx.compose.ui.graphics.Brush.horizontalGradient(
+                style = TextStyle(
+                    fontFamily = FontFamily.SansSerif,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 15.sp,
+                    letterSpacing = 4.5.sp,
+                    brush = Brush.horizontalGradient(
                         colors = listOf(
-                            com.vk.clockdin.ui.theme.MoodJoy,
-                            com.vk.clockdin.ui.theme.MoodLoving,
-                            com.vk.clockdin.ui.theme.MoodAnxious,
-                            com.vk.clockdin.ui.theme.MoodCalm
+                            Color(0xFFFFC83D), // Warm gold
+                            Color(0xFFFF5376), // Electric rose
+                            Color(0xFFB347FF), // Vivid neon purple
+                            Color(0xFF00E5FF), // Neon cyan
+                            Color(0xFF2FD4A7)  // Emerald teal
                         )
+                    ),
+                    shadow = Shadow(
+                        color = Color(0xFFB347FF).copy(alpha = 0.75f),
+                        blurRadius = 24f,
+                        offset = Offset(0f, 0f)
                     )
                 )
             )
