@@ -226,11 +226,25 @@ private fun BrushSizeSelector(
     onSizeSelected: (Float) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val presets = listOf(
-        18f to "Fine",
-        36f to "Medium",
-        64f to "Broad"
-    )
+    val presets = remember(mode) {
+        when (mode) {
+            PaintMode.SPRAY -> listOf(
+                50f to "Fine",
+                100f to "Medium",
+                160f to "Wide"
+            )
+            PaintMode.WATERCOLOR -> listOf(
+                35f to "Fine",
+                70f to "Medium",
+                120f to "Broad"
+            )
+            PaintMode.BRUSH -> listOf(
+                18f to "Fine",
+                36f to "Medium",
+                64f to "Broad"
+            )
+        }
+    }
 
     Row(
         modifier = modifier
@@ -240,7 +254,11 @@ private fun BrushSizeSelector(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
-            text = if (mode == PaintMode.SPRAY) "Spray Radius:" else "Brush Size:",
+            text = when (mode) {
+                PaintMode.SPRAY -> "Spray Radius:"
+                PaintMode.WATERCOLOR -> "Wash Size:"
+                PaintMode.BRUSH -> "Brush Size:"
+            },
             fontSize = 11.sp,
             color = TextSecondary,
             fontWeight = FontWeight.Medium
@@ -262,7 +280,7 @@ private fun BrushSizeSelector(
             ) {
                 Box(
                     modifier = Modifier
-                        .size((size / 3.5f).coerceIn(6f, 15f).dp)
+                        .size((size / 6f).coerceIn(6f, 15f).dp)
                         .clip(CircleShape)
                         .background(if (isSelected) TextPrimary else TextTertiary)
                 )
@@ -337,14 +355,18 @@ private fun DiscardConfirmationDialog(
                         )
                     }
 
-                    // Discard button
+                    // Bold, vivid Discard confirmation button
                     Box(
                         modifier = Modifier
                             .weight(1f)
                             .height(44.dp)
                             .clip(RoundedCornerShape(22.dp))
-                            .background(MoodAngry.copy(alpha = 0.35f))
-                            .border(1.dp, MoodAngry.copy(alpha = 0.6f), RoundedCornerShape(22.dp))
+                            .background(
+                                androidx.compose.ui.graphics.Brush.horizontalGradient(
+                                    listOf(Color(0xFFE53935), Color(0xFFD32F2F))
+                                )
+                            )
+                            .border(1.dp, Color(0xFFFF5252), RoundedCornerShape(22.dp))
                             .clickable(
                                 interactionSource = remember { MutableInteractionSource() },
                                 indication = null,
@@ -355,8 +377,8 @@ private fun DiscardConfirmationDialog(
                         Text(
                             text = "Discard",
                             fontSize = 14.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = Color(0xFFFF8599)
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
                         )
                     }
                 }

@@ -25,6 +25,7 @@ import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material.icons.filled.Brush
 import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.Grain
+import androidx.compose.material.icons.filled.WaterDrop
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -101,7 +102,7 @@ fun PaintTopBar(
             )
         }
 
-        // Mode Switcher (Brush vs Spray)
+        // Mode Switcher (Brush vs Spray vs Watercolor)
         Box(
             modifier = Modifier
                 .height(38.dp)
@@ -109,9 +110,12 @@ fun PaintTopBar(
                 .padding(3.dp),
             contentAlignment = Alignment.CenterStart
         ) {
-            val isSpray = currentMode == PaintMode.SPRAY
             val pillOffset by animateDpAsState(
-                targetValue = if (isSpray) 74.dp else 0.dp,
+                targetValue = when (currentMode) {
+                    PaintMode.BRUSH -> 0.dp
+                    PaintMode.SPRAY -> 68.dp
+                    PaintMode.WATERCOLOR -> 136.dp
+                },
                 animationSpec = ClockdinMotion.springDefault(),
                 label = "ModePillOffset"
             )
@@ -120,7 +124,7 @@ fun PaintTopBar(
             Box(
                 modifier = Modifier
                     .offset(x = pillOffset)
-                    .width(74.dp)
+                    .width(68.dp)
                     .height(32.dp)
                     .clip(RoundedCornerShape(16.dp))
                     .background(Color.White.copy(alpha = 0.16f))
@@ -132,7 +136,7 @@ fun PaintTopBar(
                 // Brush Segment
                 Row(
                     modifier = Modifier
-                        .width(74.dp)
+                        .width(68.dp)
                         .height(32.dp)
                         .clip(RoundedCornerShape(16.dp))
                         .clickable(
@@ -145,22 +149,22 @@ fun PaintTopBar(
                     Icon(
                         imageVector = Icons.Default.Brush,
                         contentDescription = null,
-                        tint = if (!isSpray) TextPrimary else TextTertiary,
-                        modifier = Modifier.size(15.dp)
+                        tint = if (currentMode == PaintMode.BRUSH) TextPrimary else TextTertiary,
+                        modifier = Modifier.size(14.dp)
                     )
-                    Spacer(modifier = Modifier.width(4.dp))
+                    Spacer(modifier = Modifier.width(3.dp))
                     Text(
                         text = "Brush",
-                        fontSize = 12.sp,
-                        fontWeight = if (!isSpray) FontWeight.SemiBold else FontWeight.Normal,
-                        color = if (!isSpray) TextPrimary else TextTertiary
+                        fontSize = 11.sp,
+                        fontWeight = if (currentMode == PaintMode.BRUSH) FontWeight.SemiBold else FontWeight.Normal,
+                        color = if (currentMode == PaintMode.BRUSH) TextPrimary else TextTertiary
                     )
                 }
 
                 // Spray Segment
                 Row(
                     modifier = Modifier
-                        .width(74.dp)
+                        .width(68.dp)
                         .height(32.dp)
                         .clip(RoundedCornerShape(16.dp))
                         .clickable(
@@ -173,15 +177,43 @@ fun PaintTopBar(
                     Icon(
                         imageVector = Icons.Default.Grain,
                         contentDescription = null,
-                        tint = if (isSpray) TextPrimary else TextTertiary,
-                        modifier = Modifier.size(15.dp)
+                        tint = if (currentMode == PaintMode.SPRAY) TextPrimary else TextTertiary,
+                        modifier = Modifier.size(14.dp)
                     )
-                    Spacer(modifier = Modifier.width(4.dp))
+                    Spacer(modifier = Modifier.width(3.dp))
                     Text(
                         text = "Spray",
-                        fontSize = 12.sp,
-                        fontWeight = if (isSpray) FontWeight.SemiBold else FontWeight.Normal,
-                        color = if (isSpray) TextPrimary else TextTertiary
+                        fontSize = 11.sp,
+                        fontWeight = if (currentMode == PaintMode.SPRAY) FontWeight.SemiBold else FontWeight.Normal,
+                        color = if (currentMode == PaintMode.SPRAY) TextPrimary else TextTertiary
+                    )
+                }
+
+                // Watercolor Segment
+                Row(
+                    modifier = Modifier
+                        .width(68.dp)
+                        .height(32.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null
+                        ) { onModeChange(PaintMode.WATERCOLOR) },
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.WaterDrop,
+                        contentDescription = null,
+                        tint = if (currentMode == PaintMode.WATERCOLOR) TextPrimary else TextTertiary,
+                        modifier = Modifier.size(14.dp)
+                    )
+                    Spacer(modifier = Modifier.width(3.dp))
+                    Text(
+                        text = "Water",
+                        fontSize = 11.sp,
+                        fontWeight = if (currentMode == PaintMode.WATERCOLOR) FontWeight.SemiBold else FontWeight.Normal,
+                        color = if (currentMode == PaintMode.WATERCOLOR) TextPrimary else TextTertiary
                     )
                 }
             }

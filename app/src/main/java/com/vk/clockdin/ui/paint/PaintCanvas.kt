@@ -56,6 +56,8 @@ fun PaintCanvas(
     // Current in-progress stroke data
     var currentPoints by remember { mutableStateOf<List<Offset>>(emptyList()) }
     var currentSprayDots by remember { mutableStateOf<List<SprayDot>>(emptyList()) }
+    var currentWatercolorDrops by remember { mutableStateOf<List<WatercolorDrop>>(emptyList()) }
+    var lastDropOffset by remember { mutableStateOf<Offset?>(null) }
     var activeTouchOffset by remember { mutableStateOf<Offset?>(null) }
 
     val resolvedActiveColor = remember(activeColor) {
@@ -129,51 +131,99 @@ fun PaintCanvas(
                     detectDragGestures(
                         onDragStart = { offset ->
                             activeTouchOffset = offset
-                            if (mode == PaintMode.BRUSH) {
-                                currentPoints = listOf(offset)
-                                currentSprayDots = emptyList()
-                            } else {
-                                currentPoints = emptyList()
-                                currentSprayDots = generateSprayDots(offset, brushSize, count = 22)
+                            lastDropOffset = offset
+                            when (mode) {
+                                PaintMode.BRUSH -> {
+                                    currentPoints = listOf(offset)
+                                    currentSprayDots = emptyList()
+                                    currentWatercolorDrops = emptyList()
+                                }
+                                PaintMode.SPRAY -> {
+                                    currentPoints = emptyList()
+                                    currentSprayDots = generateSprayDots(offset, brushSize, count = 55)
+                                    currentWatercolorDrops = emptyList()
+                                }
+                                PaintMode.WATERCOLOR -> {
+                                    currentPoints = emptyList()
+                                    currentSprayDots = emptyList()
+                                    currentWatercolorDrops = generateWatercolorDrops(offset, brushSize, count = 2)
+                                }
                             }
                         },
                         onDrag = { change, _ ->
                             change.consume()
-                            activeTouchOffset = change.position
-                            if (mode == PaintMode.BRUSH) {
-                                currentPoints = currentPoints + change.position
-                            } else {
-                                val newDots = generateSprayDots(change.position, brushSize, count = 16)
-                                currentSprayDots = currentSprayDots + newDots
+                            val pos = change.position
+                            activeTouchOffset = pos
+
+                            when (mode) {
+                                PaintMode.BRUSH -> {
+                                    currentPoints = currentPoints + pos
+                                }
+                                PaintMode.SPRAY -> {
+                                    val newDots = generateSprayDots(pos, brushSize, count = 45)
+                                    currentSprayDots = currentSprayDots + newDots
+                                }
+                                PaintMode.WATERCOLOR -> {
+                                    val last = lastDropOffset
+                                    val minDistance = (brushSize * 0.32f).coerceAtLeast(14f)
+                                    if (last == null || (pos - last).getDistance() >= minDistance) {
+                                        val newDrops = generateWatercolorDrops(pos, brushSize, count = 1)
+                                        currentWatercolorDrops = currentWatercolorDrops + newDrops
+                                        lastDropOffset = pos
+                                    }
+                                }
                             }
                         },
                         onDragEnd = {
-                            if (mode == PaintMode.BRUSH && currentPoints.isNotEmpty()) {
-                                onAddStroke(
-                                    PaintStroke(
-                                        mode = PaintMode.BRUSH,
-                                        points = currentPoints,
-                                        color = resolvedActiveColor,
-                                        strokeWidth = brushSize
-                                    )
-                                )
-                            } else if (mode == PaintMode.SPRAY && currentSprayDots.isNotEmpty()) {
-                                onAddStroke(
-                                    PaintStroke(
-                                        mode = PaintMode.SPRAY,
-                                        sprayDots = currentSprayDots,
-                                        color = resolvedActiveColor,
-                                        strokeWidth = brushSize
-                                    )
-                                )
+                            when (mode) {
+                                PaintMode.BRUSH -> {
+                                    if (currentPoints.isNotEmpty()) {
+                                        onAddStroke(
+                                            PaintStroke(
+                                                mode = PaintMode.BRUSH,
+                                                points = currentPoints,
+                                                color = resolvedActiveColor,
+                                                strokeWidth = brushSize
+                                            )
+                                        )
+                                    }
+                                }
+                                PaintMode.SPRAY -> {
+                                    if (currentSprayDots.isNotEmpty()) {
+                                        onAddStroke(
+                                            PaintStroke(
+                                                mode = PaintMode.SPRAY,
+                                                sprayDots = currentSprayDots,
+                                                color = resolvedActiveColor,
+                                                strokeWidth = brushSize
+                                            )
+                                        )
+                                    }
+                                }
+                                PaintMode.WATERCOLOR -> {
+                                    if (currentWatercolorDrops.isNotEmpty()) {
+                                        onAddStroke(
+                                            PaintStroke(
+                                                mode = PaintMode.WATERCOLOR,
+                                                watercolorDrops = currentWatercolorDrops,
+                                                color = resolvedActiveColor,
+                                                strokeWidth = brushSize
+                                            )
+                                        )
+                                    }
+                                }
                             }
                             currentPoints = emptyList()
                             currentSprayDots = emptyList()
+                            currentWatercolorDrops = emptyList()
+                            lastDropOffset = null
                             activeTouchOffset = null
                         },
                         onDragCancel = {
                             currentPoints = emptyList()
                             currentSprayDots = emptyList()
+                            currentWatercolorDrops = emptyList()
+                            lastDropOffset = null
                             activeTouchOffset = null
                         }
                     )
@@ -181,26 +231,39 @@ fun PaintCanvas(
                 .pointerInput(mode, resolvedActiveColor, brushSize) {
                     detectTapGestures(
                         onTap = { offset ->
-                            if (mode == PaintMode.BRUSH) {
-                                onAddStroke(
-                                    PaintStroke(
-                                        mode = PaintMode.BRUSH,
-                                        points = listOf(offset),
-                                        color = resolvedActiveColor,
-                                        strokeWidth = brushSize
+                            when (mode) {
+                                PaintMode.BRUSH -> {
+                                    onAddStroke(
+                                        PaintStroke(
+                                            mode = PaintMode.BRUSH,
+                                            points = listOf(offset),
+                                            color = resolvedActiveColor,
+                                            strokeWidth = brushSize
+                                        )
                                     )
-                                )
-                            } else {
-                                // Spray burst on tap
-                                val burstDots = generateSprayDots(offset, brushSize, count = 35)
-                                onAddStroke(
-                                    PaintStroke(
-                                        mode = PaintMode.SPRAY,
-                                        sprayDots = burstDots,
-                                        color = resolvedActiveColor,
-                                        strokeWidth = brushSize
+                                }
+                                PaintMode.SPRAY -> {
+                                    val burstDots = generateSprayDots(offset, brushSize, count = 90)
+                                    onAddStroke(
+                                        PaintStroke(
+                                            mode = PaintMode.SPRAY,
+                                            sprayDots = burstDots,
+                                            color = resolvedActiveColor,
+                                            strokeWidth = brushSize
+                                        )
                                     )
-                                )
+                                }
+                                PaintMode.WATERCOLOR -> {
+                                    val tapDrops = generateWatercolorDrops(offset, brushSize, count = 3)
+                                    onAddStroke(
+                                        PaintStroke(
+                                            mode = PaintMode.WATERCOLOR,
+                                            watercolorDrops = tapDrops,
+                                            color = resolvedActiveColor,
+                                            strokeWidth = brushSize
+                                        )
+                                    )
+                                }
                             }
                         }
                     )
@@ -212,30 +275,42 @@ fun PaintCanvas(
 
                 // 1. Render all committed strokes
                 for (stroke in strokes) {
-                    if (stroke.mode == PaintMode.SPRAY) {
-                        drawSprayStroke(stroke)
-                    } else {
-                        drawBrushStroke(stroke)
+                    when (stroke.mode) {
+                        PaintMode.SPRAY -> drawSprayStroke(stroke)
+                        PaintMode.WATERCOLOR -> drawWatercolorStroke(stroke)
+                        PaintMode.BRUSH -> drawBrushStroke(stroke)
                     }
                 }
 
                 // 2. Render active in-progress stroke
-                if (mode == PaintMode.BRUSH && currentPoints.isNotEmpty()) {
-                    drawBrushStroke(
-                        PaintStroke(
-                            mode = PaintMode.BRUSH,
-                            points = currentPoints,
-                            color = resolvedActiveColor,
-                            strokeWidth = brushSize
-                        )
-                    )
-                } else if (mode == PaintMode.SPRAY && currentSprayDots.isNotEmpty()) {
-                    drawSprayDotsDirect(currentSprayDots, resolvedActiveColor)
+                when (mode) {
+                    PaintMode.BRUSH -> {
+                        if (currentPoints.isNotEmpty()) {
+                            drawBrushStroke(
+                                PaintStroke(
+                                    mode = PaintMode.BRUSH,
+                                    points = currentPoints,
+                                    color = resolvedActiveColor,
+                                    strokeWidth = brushSize
+                                )
+                            )
+                        }
+                    }
+                    PaintMode.SPRAY -> {
+                        if (currentSprayDots.isNotEmpty()) {
+                            drawSprayDotsDirect(currentSprayDots, resolvedActiveColor)
+                        }
+                    }
+                    PaintMode.WATERCOLOR -> {
+                        if (currentWatercolorDrops.isNotEmpty()) {
+                            drawWatercolorDropsDirect(currentWatercolorDrops, resolvedActiveColor)
+                        }
+                    }
                 }
 
-                // 3. Spray nozzle cursor ring when user is dragging in Spray mode
+                // 3. Spray / Watercolor nozzle cursor ring when user is dragging
                 activeTouchOffset?.let { touchPos ->
-                    if (mode == PaintMode.SPRAY) {
+                    if (mode == PaintMode.SPRAY || mode == PaintMode.WATERCOLOR) {
                         drawCircle(
                             color = resolvedActiveColor.copy(alpha = 0.35f),
                             radius = brushSize / 2f,
@@ -259,12 +334,12 @@ fun PaintCanvas(
 
 /**
  * Generates randomized aerosol / spray paint droplets around a central point.
+ * Provides high particle count and larger droplet sizes for fast, bold surface coverage.
  */
 private fun generateSprayDots(center: Offset, sprayDiameter: Float, count: Int): List<SprayDot> {
     val maxR = sprayDiameter / 2f
     val dots = ArrayList<SprayDot>(count)
     for (i in 0 until count) {
-        // Uniform circular distribution with radial falloff
         val u = Random.nextFloat()
         val r = maxR * sqrt(u)
         val theta = Random.nextFloat() * (2f * Math.PI.toFloat())
@@ -272,14 +347,32 @@ private fun generateSprayDots(center: Offset, sprayDiameter: Float, count: Int):
         val x = center.x + r * cos(theta)
         val y = center.y + r * sin(theta)
 
-        // Drop size ranges between 1.5dp and 3.5dp with central density
-        val dotRadius = (1.2f + Random.nextFloat() * 2.2f)
+        // Drop size ranges between 2.0px and 6.5px with central density
+        val dotRadius = (2.0f + Random.nextFloat() * 4.5f)
         val falloff = (1f - (r / maxR).coerceIn(0f, 1f))
-        val alpha = (0.25f + Random.nextFloat() * 0.70f) * (0.4f + falloff * 0.6f)
+        val alpha = (0.30f + Random.nextFloat() * 0.70f) * (0.45f + falloff * 0.55f)
 
-        dots.add(SprayDot(x = x, y = y, radius = dotRadius, alpha = alpha.coerceIn(0.1f, 1f)))
+        dots.add(SprayDot(x = x, y = y, radius = dotRadius, alpha = alpha.coerceIn(0.15f, 1f)))
     }
     return dots
+}
+
+/**
+ * Generates soft, feathered translucent watercolor drops with slight organic jitter.
+ */
+private fun generateWatercolorDrops(center: Offset, diameter: Float, count: Int): List<WatercolorDrop> {
+    val drops = ArrayList<WatercolorDrop>(count)
+    val baseRadius = diameter / 2f
+    for (i in 0 until count) {
+        val angle = Random.nextFloat() * (2f * Math.PI.toFloat())
+        val dist = Random.nextFloat() * (baseRadius * 0.25f)
+        val x = center.x + dist * cos(angle)
+        val y = center.y + dist * sin(angle)
+        val dropRadius = baseRadius * (0.85f + Random.nextFloat() * 0.30f)
+        val alpha = (0.75f + Random.nextFloat() * 0.25f)
+        drops.add(WatercolorDrop(x = x, y = y, radius = dropRadius, alpha = alpha))
+    }
+    return drops
 }
 
 /**
@@ -338,6 +431,36 @@ private fun DrawScope.drawSprayDotsDirect(dots: List<SprayDot>, baseColor: Color
             color = baseColor.copy(alpha = (baseColor.alpha * dot.alpha).coerceIn(0f, 1f)),
             radius = dot.radius,
             center = Offset(dot.x, dot.y)
+        )
+    }
+}
+
+/**
+ * Draws soft bleeding watercolor pigment washes with radial gradients.
+ */
+private fun DrawScope.drawWatercolorStroke(stroke: PaintStroke) {
+    drawWatercolorDropsDirect(stroke.watercolorDrops, stroke.color)
+}
+
+private fun DrawScope.drawWatercolorDropsDirect(drops: List<WatercolorDrop>, baseColor: Color) {
+    for (drop in drops) {
+        if (drop.radius <= 0f) continue
+        val center = Offset(drop.x, drop.y)
+        val centerAlpha = (baseColor.alpha * drop.alpha * 0.28f).coerceIn(0f, 1f)
+        val midAlpha = (baseColor.alpha * drop.alpha * 0.10f).coerceIn(0f, 1f)
+
+        drawCircle(
+            brush = Brush.radialGradient(
+                colors = listOf(
+                    baseColor.copy(alpha = centerAlpha),
+                    baseColor.copy(alpha = midAlpha),
+                    Color.Transparent
+                ),
+                center = center,
+                radius = drop.radius
+            ),
+            radius = drop.radius,
+            center = center
         )
     }
 }

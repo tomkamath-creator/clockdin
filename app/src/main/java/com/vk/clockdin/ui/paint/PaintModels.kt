@@ -8,7 +8,8 @@ import com.vk.clockdin.domain.model.MoodColor
 
 enum class PaintMode {
     BRUSH,
-    SPRAY
+    SPRAY,
+    WATERCOLOR
 }
 
 /**
@@ -22,13 +23,24 @@ data class SprayDot(
 )
 
 /**
- * A paint stroke representing either a smooth solid brush stroke
- * or a cosmic aerosol spray particle cloud.
+ * A soft translucent pigment wash dab within a watercolor stroke.
+ */
+data class WatercolorDrop(
+    val x: Float,
+    val y: Float,
+    val radius: Float,
+    val alpha: Float
+)
+
+/**
+ * A paint stroke representing a smooth solid brush stroke,
+ * a cosmic aerosol spray particle cloud, or a soft fluid watercolor wash.
  */
 data class PaintStroke(
     val mode: PaintMode = PaintMode.BRUSH,
     val points: List<Offset> = emptyList(),
     val sprayDots: List<SprayDot> = emptyList(),
+    val watercolorDrops: List<WatercolorDrop> = emptyList(),
     val color: Color,
     val strokeWidth: Float
 )
@@ -39,7 +51,7 @@ data class PaintUiState(
     val selectedColors: List<MoodColor> = emptyList(),
     val activeColor: MoodColor? = null,
     val strokes: List<PaintStroke> = emptyList(),
-    val brushSize: Float = 36f,
+    val brushSize: Float = 42f,
     val isShaking: Boolean = false,
     val validationMessage: String? = null,
     val isRasterizing: Boolean = false,

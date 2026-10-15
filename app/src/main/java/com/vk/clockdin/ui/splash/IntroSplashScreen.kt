@@ -56,7 +56,7 @@ fun IntroSplashScreen(
     val alphaAnim = remember { Animatable(0f) }
     val scaleAnim = remember { Animatable(0.92f) }
 
-    // Ambient floating nebula pulse animation
+    // Ambient floating nebula motion and pulse animation
     val infiniteTransition = rememberInfiniteTransition(label = "splash_nebula")
     val cloudPulse by infiniteTransition.animateFloat(
         initialValue = 0.85f,
@@ -66,6 +66,24 @@ fun IntroSplashScreen(
             repeatMode = RepeatMode.Reverse
         ),
         label = "cloud_pulse"
+    )
+    val cloudDriftX by infiniteTransition.animateFloat(
+        initialValue = -35f,
+        targetValue = 35f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 4200, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "cloud_drift_x"
+    )
+    val cloudDriftY by infiniteTransition.animateFloat(
+        initialValue = -25f,
+        targetValue = 25f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 3600, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "cloud_drift_y"
     )
 
     LaunchedEffect(Unit) {
@@ -99,12 +117,13 @@ fun IntroSplashScreen(
             .spaceBackground(),
         contentAlignment = Alignment.Center
     ) {
-        // Space clouds (cosmic nebulae) in background
+        // Space clouds (cosmic nebulae) drifting and floating in background
         Canvas(modifier = Modifier.fillMaxSize()) {
             val cx = size.width / 2f
             val cy = size.height / 2f
 
             // Nebula 1: Deep cosmic violet cloud
+            val center1 = Offset(cx - 80f + cloudDriftX, cy - 60f + cloudDriftY)
             drawCircle(
                 brush = Brush.radialGradient(
                     colors = listOf(
@@ -112,14 +131,15 @@ fun IntroSplashScreen(
                         Color(0x184A148C),
                         Color.Transparent
                     ),
-                    center = Offset(cx - 80f, cy - 60f),
+                    center = center1,
                     radius = 320f * cloudPulse
                 ),
                 radius = 320f * cloudPulse,
-                center = Offset(cx - 80f, cy - 60f)
+                center = center1
             )
 
             // Nebula 2: Ethereal cyan/teal space cloud
+            val center2 = Offset(cx + 90f - cloudDriftX * 0.8f, cy + 50f - cloudDriftY * 0.9f)
             drawCircle(
                 brush = Brush.radialGradient(
                     colors = listOf(
@@ -127,25 +147,26 @@ fun IntroSplashScreen(
                         Color(0x12004D40),
                         Color.Transparent
                     ),
-                    center = Offset(cx + 90f, cy + 50f),
+                    center = center2,
                     radius = 280f * cloudPulse
                 ),
                 radius = 280f * cloudPulse,
-                center = Offset(cx + 90f, cy + 50f)
+                center = center2
             )
 
             // Nebula 3: Soft warm gold cosmic dust center
+            val center3 = Offset(cx + cloudDriftY * 0.5f, cy + 10f + cloudDriftX * 0.5f)
             drawCircle(
                 brush = Brush.radialGradient(
                     colors = listOf(
                         Color(0x22FFA000),
                         Color.Transparent
                     ),
-                    center = Offset(cx, cy + 10f),
+                    center = center3,
                     radius = 190f * cloudPulse
                 ),
                 radius = 190f * cloudPulse,
-                center = Offset(cx, cy + 10f)
+                center = center3
             )
         }
 

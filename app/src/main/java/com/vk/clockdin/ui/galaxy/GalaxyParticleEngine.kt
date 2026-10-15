@@ -238,11 +238,23 @@ class GalaxyParticleEngine(
     ): List<BeadRenderItem> {
         val timeSeconds = timeNanos / 1_000_000_000f
 
-        // 1. Update and project volumetric space clouds (nebulae)
+        // 1. Update and project volumetric space clouds (nebulae) with dynamic 3D drift and swirl
         for (i in nebulae.indices) {
             val nebula = nebulae[i]
+            val orbitAngle = timeSeconds * 0.05f + i * 1.57f
+            val cosO = cos(orbitAngle * 0.5f)
+            val sinO = sin(orbitAngle * 0.5f)
+
+            // Dynamic orbital drift across X, Y, Z
+            val nx = nebula.x * cosO - nebula.z * sinO * 0.4f + sin(timeSeconds * 0.12f + i * 1.4f) * 75f
+            val ny = nebula.y + cos(timeSeconds * 0.10f + i * 2.2f) * 60f
+            val nz = nebula.z * cosO + nebula.x * sinO * 0.4f + cos(timeSeconds * 0.14f + i * 0.9f) * 65f
+
+            // Organic breathing in cloud radius
+            val dynamicRadius = nebula.baseRadius * (1f + 0.14f * sin(timeSeconds * 0.22f + i * 1.1f))
+
             val projected = FibonacciSphere.project(
-                point = Point3D(nebula.x, nebula.y, nebula.z),
+                point = Point3D(nx, ny, nz),
                 yawRad = yaw * 0.75f, // subtle parallax drift
                 pitchRad = pitch * 0.75f,
                 centerX = centerX,
@@ -255,7 +267,7 @@ class GalaxyParticleEngine(
             nebula.screenY = projected.screenY
             nebula.depth = projected.depth
             nebula.scale = projected.scale
-            nebula.radius = nebula.baseRadius * projected.scale
+            nebula.radius = dynamicRadius * projected.scale
 
             nebula.isVisible = projected.screenX in (-nebula.radius)..(viewportWidth + nebula.radius) &&
                     projected.screenY in (-nebula.radius)..(viewportHeight + nebula.radius)

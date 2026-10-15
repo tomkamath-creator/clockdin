@@ -28,7 +28,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.DeleteOutline
-import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.ZoomIn
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -263,40 +262,6 @@ fun EntryDetailScreen(
                                 )
                             }
                         }
-                    }
-
-                    // 4. Song Badge (if present)
-                    if (!entry.songTitle.isNullOrBlank()) {
-                        Row(
-                            modifier = Modifier
-                                .padding(horizontal = 24.dp, vertical = 6.dp)
-                                .glassCard(shape = RoundedCornerShape(16.dp), fillColor = GlassSurfaceUltraLow)
-                                .border(1.dp, Color(0xFF00E5FF).copy(alpha = 0.35f), RoundedCornerShape(16.dp))
-                                .padding(horizontal = 14.dp, vertical = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.MusicNote,
-                                contentDescription = null,
-                                tint = Color(0xFF00E5FF),
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Text(
-                                text = buildString {
-                                    append(entry.songTitle)
-                                    if (!entry.songArtist.isNullOrBlank()) {
-                                        append(" • ")
-                                        append(entry.songArtist)
-                                    }
-                                },
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.Medium,
-                                color = TextPrimary
-                            )
-                        }
-                    }
-
                     Spacer(modifier = Modifier.height(10.dp))
 
                     // 5. Journal Note (if present)
@@ -416,28 +381,50 @@ private fun DeleteConfirmationDialog(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
+                    // Cancel button
                     Box(
                         modifier = Modifier
                             .weight(1f)
-                            .height(44.dp)
-                            .glassCard(shape = RoundedCornerShape(22.dp), fillColor = GlassSurfaceLow)
+                            .height(48.dp)
+                            .glassCard(shape = RoundedCornerShape(24.dp), fillColor = GlassSurfaceLow)
                             .clickable(onClick = onDismiss),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text("Cancel", color = TextPrimary, fontWeight = FontWeight.Medium)
+                        Text("Cancel", color = TextPrimary, fontWeight = FontWeight.Medium, fontSize = 14.sp)
                     }
 
+                    // Bold, vivid high-contrast Delete button
                     Box(
                         modifier = Modifier
                             .weight(1f)
-                            .height(44.dp)
-                            .clip(RoundedCornerShape(22.dp))
-                            .background(MoodAngry.copy(alpha = 0.35f))
-                            .border(1.dp, MoodAngry.copy(alpha = 0.6f), RoundedCornerShape(22.dp))
+                            .height(48.dp)
+                            .clip(RoundedCornerShape(24.dp))
+                            .background(
+                                Brush.horizontalGradient(
+                                    listOf(Color(0xFFE53935), Color(0xFFD32F2F))
+                                )
+                            )
+                            .border(1.dp, Color(0xFFFF5252), RoundedCornerShape(24.dp))
                             .clickable(onClick = onConfirmDelete),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text("Delete", color = Color(0xFFFF8599), fontWeight = FontWeight.Bold)
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.DeleteOutline,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Text(
+                                text = "Delete",
+                                color = Color.White,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 15.sp
+                            )
+                        }
                     }
                 }
             }

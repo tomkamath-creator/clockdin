@@ -66,7 +66,12 @@ class PaintViewModel @Inject constructor(
     }
 
     fun setMode(mode: PaintMode) {
-        _uiState.update { it.copy(mode = mode) }
+        val defaultSize = when (mode) {
+            PaintMode.BRUSH -> 36f
+            PaintMode.SPRAY -> 100f
+            PaintMode.WATERCOLOR -> 70f
+        }
+        _uiState.update { it.copy(mode = mode, brushSize = defaultSize) }
         triggerHaptic()
     }
 
@@ -156,7 +161,7 @@ class PaintViewModel @Inject constructor(
     }
 
     fun setBrushSize(size: Float) {
-        _uiState.update { it.copy(brushSize = size.coerceIn(12f, 84f)) }
+        _uiState.update { it.copy(brushSize = size.coerceIn(12f, 200f)) }
     }
 
     fun onNextClicked(canvasSizePx: Float) {

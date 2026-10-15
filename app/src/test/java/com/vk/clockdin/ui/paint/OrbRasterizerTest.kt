@@ -92,4 +92,34 @@ class OrbRasterizerTest {
         assertEquals(0f, result[0].position, 0.001f)
         assertEquals(1f, result[1].position, 0.001f)
     }
+
+    @Test
+    fun extractDominantStops_watercolorMode_extractsColors() {
+        val drops = listOf(
+            WatercolorDrop(x = 120f, y = 140f, radius = 30f, alpha = 0.8f)
+        )
+        val strokes = listOf(
+            PaintStroke(
+                mode = PaintMode.WATERCOLOR,
+                watercolorDrops = drops,
+                color = Color(1f, 0f, 1f),
+                strokeWidth = 40f
+            ),
+            PaintStroke(
+                mode = PaintMode.WATERCOLOR,
+                watercolorDrops = drops,
+                color = Color(0f, 1f, 1f),
+                strokeWidth = 40f
+            )
+        )
+
+        val result = OrbRasterizer.extractDominantStops(
+            strokes = strokes,
+            fallbackColors = emptyList()
+        )
+
+        assertEquals(2, result.size)
+        assertEquals("#FF00FF", result[0].hex)
+        assertEquals("#00FFFF", result[1].hex)
+    }
 }

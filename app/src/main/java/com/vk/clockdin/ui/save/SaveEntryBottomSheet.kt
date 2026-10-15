@@ -27,7 +27,6 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material3.CircularProgressIndicator
@@ -89,8 +88,6 @@ fun SaveEntryBottomSheet(
     val scope = rememberCoroutineScope()
 
     var noteText by remember { mutableStateOf("") }
-    var songTitle by remember { mutableStateOf("") }
-    var songArtist by remember { mutableStateOf("") }
     var attachedPhotoPath by remember { mutableStateOf<String?>(null) }
     var isSaving by remember { mutableStateOf(false) }
     var isProcessingPhoto by remember { mutableStateOf(false) }
@@ -257,81 +254,7 @@ fun SaveEntryBottomSheet(
                     color = if (noteText.length >= 480) Color(0xFFFF5376) else TextDisabled,
                     fontSize = 11.sp,
                     modifier = Modifier.align(Alignment.End)
-                )
-            }
 
-            // 3. Song of the Day (Optional)
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .glassCard(shape = RoundedCornerShape(18.dp), fillColor = GlassSurfaceUltraLow)
-                    .padding(12.dp)
-            ) {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.MusicNote,
-                            contentDescription = null,
-                            tint = Color(0xFF00E5FF),
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Text(
-                            text = "Song of the Day (optional)",
-                            fontSize = 12.sp,
-                            color = TextSecondary,
-                            fontWeight = FontWeight.Medium
-                        )
-                    }
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        // Song Title
-                        Box(
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(38.dp)
-                                .glassCard(shape = RoundedCornerShape(10.dp), fillColor = GlassSurfaceLow)
-                                .padding(horizontal = 10.dp, vertical = 8.dp)
-                        ) {
-                            if (songTitle.isEmpty()) {
-                                Text("Title", color = TextTertiary, fontSize = 13.sp)
-                            }
-                            BasicTextField(
-                                value = songTitle,
-                                onValueChange = { songTitle = it },
-                                textStyle = TextStyle(color = TextPrimary, fontSize = 13.sp),
-                                singleLine = true,
-                                cursorBrush = SolidColor(TextPrimary)
-                            )
-                        }
-
-                        // Song Artist
-                        Box(
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(38.dp)
-                                .glassCard(shape = RoundedCornerShape(10.dp), fillColor = GlassSurfaceLow)
-                                .padding(horizontal = 10.dp, vertical = 8.dp)
-                        ) {
-                            if (songArtist.isEmpty()) {
-                                Text("Artist", color = TextTertiary, fontSize = 13.sp)
-                            }
-                            BasicTextField(
-                                value = songArtist,
-                                onValueChange = { songArtist = it },
-                                textStyle = TextStyle(color = TextPrimary, fontSize = 13.sp),
-                                singleLine = true,
-                                cursorBrush = SolidColor(TextPrimary)
-                            )
-                        }
-                    }
-                }
-            }
 
             // 4. Photo Attachment (Camera + Gallery)
             Column(
@@ -489,8 +412,8 @@ fun SaveEntryBottomSheet(
                                 orbImagePath = orbImagePath,
                                 note = noteText.ifBlank { null },
                                 photoPath = attachedPhotoPath,
-                                songTitle = songTitle.ifBlank { null },
-                                songArtist = songArtist.ifBlank { null }
+                                songTitle = null,
+                                songArtist = null
                             )
                             val insertedId = saveEntryUseCase(newEntry)
                             isSaving = false

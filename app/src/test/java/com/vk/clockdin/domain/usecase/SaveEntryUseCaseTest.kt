@@ -51,6 +51,31 @@ class SaveEntryUseCaseTest {
         assertEquals("Starman", saved.songTitle)
     }
 
+    @Test
+    fun saveEntry_withoutSong_persistsCleanEntry() = runBlocking {
+        val entry = MoodEntry(
+            id = 0L,
+            createdAt = 1700000000000L,
+            localDate = "2026-10-15",
+            gradientStops = listOf(
+                GradientStop(hex = "#FFC83D", position = 0f, label = "Joy"),
+                GradientStop(hex = "#2FD4A7", position = 1f, label = "Calm")
+            ),
+            orbImagePath = "/test/orbs/orb_2.png",
+            note = "Quiet reflection under the stars",
+            songTitle = null,
+            songArtist = null
+        )
+
+        val id = useCase(entry)
+
+        assertEquals(1L, id)
+        val saved = fakeRepository.entries.first()
+        assertEquals("Quiet reflection under the stars", saved.note)
+        org.junit.Assert.assertNull(saved.songTitle)
+        org.junit.Assert.assertNull(saved.songArtist)
+    }
+
     private class FakeMoodEntryRepository : MoodEntryRepository {
         val entries = mutableListOf<MoodEntry>()
         private var nextId = 1L
