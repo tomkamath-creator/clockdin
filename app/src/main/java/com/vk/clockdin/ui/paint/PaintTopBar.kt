@@ -24,10 +24,9 @@ import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material.icons.filled.Brush
 import androidx.compose.material.icons.filled.DeleteOutline
-import androidx.compose.material.icons.filled.Gradient
+import androidx.compose.material.icons.filled.Grain
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -102,7 +101,7 @@ fun PaintTopBar(
             )
         }
 
-        // Mode Switcher (Brush vs Gradient)
+        // Mode Switcher (Brush vs Spray)
         Box(
             modifier = Modifier
                 .height(38.dp)
@@ -110,9 +109,9 @@ fun PaintTopBar(
                 .padding(3.dp),
             contentAlignment = Alignment.CenterStart
         ) {
-            val isGradient = currentMode == PaintMode.GRADIENT
+            val isSpray = currentMode == PaintMode.SPRAY
             val pillOffset by animateDpAsState(
-                targetValue = if (isGradient) 74.dp else 0.dp,
+                targetValue = if (isSpray) 74.dp else 0.dp,
                 animationSpec = ClockdinMotion.springDefault(),
                 label = "ModePillOffset"
             )
@@ -139,26 +138,26 @@ fun PaintTopBar(
                         .clickable(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null
-                        ) { onModeChange(PaintMode.FREEHAND) },
+                        ) { onModeChange(PaintMode.BRUSH) },
                     horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
                         imageVector = Icons.Default.Brush,
                         contentDescription = null,
-                        tint = if (!isGradient) TextPrimary else TextTertiary,
+                        tint = if (!isSpray) TextPrimary else TextTertiary,
                         modifier = Modifier.size(15.dp)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
                         text = "Brush",
                         fontSize = 12.sp,
-                        fontWeight = if (!isGradient) FontWeight.SemiBold else FontWeight.Normal,
-                        color = if (!isGradient) TextPrimary else TextTertiary
+                        fontWeight = if (!isSpray) FontWeight.SemiBold else FontWeight.Normal,
+                        color = if (!isSpray) TextPrimary else TextTertiary
                     )
                 }
 
-                // Gradient Segment
+                // Spray Segment
                 Row(
                     modifier = Modifier
                         .width(74.dp)
@@ -167,22 +166,22 @@ fun PaintTopBar(
                         .clickable(
                             interactionSource = remember { MutableInteractionSource() },
                             indication = null
-                        ) { onModeChange(PaintMode.GRADIENT) },
+                        ) { onModeChange(PaintMode.SPRAY) },
                     horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Gradient,
+                        imageVector = Icons.Default.Grain,
                         contentDescription = null,
-                        tint = if (isGradient) TextPrimary else TextTertiary,
+                        tint = if (isSpray) TextPrimary else TextTertiary,
                         modifier = Modifier.size(15.dp)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
-                        text = "Gradient",
+                        text = "Spray",
                         fontSize = 12.sp,
-                        fontWeight = if (isGradient) FontWeight.SemiBold else FontWeight.Normal,
-                        color = if (isGradient) TextPrimary else TextTertiary
+                        fontWeight = if (isSpray) FontWeight.SemiBold else FontWeight.Normal,
+                        color = if (isSpray) TextPrimary else TextTertiary
                     )
                 }
             }
@@ -193,48 +192,46 @@ fun PaintTopBar(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            if (currentMode == PaintMode.FREEHAND) {
-                // Undo Button
-                Box(
-                    modifier = Modifier
-                        .size(36.dp)
-                        .glassCard(shape = CircleShape, fillColor = GlassSurfaceUltraLow)
-                        .clickable(
-                            enabled = canUndo,
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = null,
-                            onClick = onUndo
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.Undo,
-                        contentDescription = "Undo",
-                        tint = if (canUndo) TextPrimary else TextTertiary.copy(alpha = 0.3f),
-                        modifier = Modifier.size(18.dp)
-                    )
-                }
+            // Undo Button
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .glassCard(shape = CircleShape, fillColor = GlassSurfaceUltraLow)
+                .clickable(
+                    enabled = canUndo,
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = onUndo
+                ),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.Undo,
+                    contentDescription = "Undo",
+                    tint = if (canUndo) TextPrimary else TextTertiary.copy(alpha = 0.3f),
+                    modifier = Modifier.size(18.dp)
+                )
+            }
 
-                // Clear Button
-                Box(
-                    modifier = Modifier
-                        .size(36.dp)
-                        .glassCard(shape = CircleShape, fillColor = GlassSurfaceUltraLow)
-                        .clickable(
-                            enabled = canClear,
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = null,
-                            onClick = onClear
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.DeleteOutline,
-                        contentDescription = "Clear",
-                        tint = if (canClear) TextPrimary else TextTertiary.copy(alpha = 0.3f),
-                        modifier = Modifier.size(18.dp)
-                    )
-                }
+            // Clear Button
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .glassCard(shape = CircleShape, fillColor = GlassSurfaceUltraLow)
+                    .clickable(
+                        enabled = canClear,
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = onClear
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.DeleteOutline,
+                    contentDescription = "Clear",
+                    tint = if (canClear) TextPrimary else TextTertiary.copy(alpha = 0.3f),
+                    modifier = Modifier.size(18.dp)
+                )
             }
 
             // Next / Done Button

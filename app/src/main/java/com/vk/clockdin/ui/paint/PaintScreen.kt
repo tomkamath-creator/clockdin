@@ -108,7 +108,7 @@ fun PaintScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceBetween
         ) {
-            // 1. Top Bar
+            // 1. Top Bar with Brush/Spray toggle, Undo, Clear, Next
             PaintTopBar(
                 currentMode = uiState.mode,
                 canUndo = uiState.strokes.isNotEmpty(),
@@ -128,44 +128,33 @@ fun PaintScreen(
                 onNext = { viewModel.onNextClicked(measuredCanvasSize) }
             )
 
-            // 2. Central Circular Paint Canvas
+            // 2. Central Circular Paint Canvas (Fluid Brush + Spray Paint)
             Box(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth()
-                    .padding(horizontal = 24.dp),
+                    .padding(horizontal = 20.dp),
                 contentAlignment = Alignment.Center
             ) {
                 PaintCanvas(
                     mode = uiState.mode,
                     strokes = uiState.strokes,
-                    gradientStops = uiState.gradientStops,
                     activeColor = uiState.activeColor,
                     brushSize = uiState.brushSize,
                     onAddStroke = { viewModel.addStroke(it) },
-                    onUpdateGradientStopPosition = { id, pos ->
-                        viewModel.updateGradientStopPosition(id, pos)
-                    },
-                    onRemoveGradientStop = { viewModel.removeGradientStop(it) },
                     onCanvasSizeMeasured = { size -> measuredCanvasSize = size },
-                    modifier = Modifier.fillMaxSize(0.88f)
+                    modifier = Modifier.fillMaxSize(0.92f)
                 )
             }
 
-            // 3. Middle controls: Brush size picker (Freehand) or Gradient helper (Gradient)
-            if (uiState.mode == PaintMode.FREEHAND) {
-                BrushSizeSelector(
-                    currentSize = uiState.brushSize,
-                    onSizeSelected = { viewModel.setBrushSize(it) }
-                )
-            } else {
-                GradientModeHelper(
-                    stopCount = uiState.gradientStops.size,
-                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp)
-                )
-            }
+            // 3. Size selector for Brush width / Spray dispersion radius
+            BrushSizeSelector(
+                currentSize = uiState.brushSize,
+                mode = uiState.mode,
+                onSizeSelected = { viewModel.setBrushSize(it) }
+            )
 
-            // 4. Bottom Palette Selector
+            // 4. Prominent, eye-catching Mood Palette Selector
             PaintPaletteSelector(
                 availableColors = uiState.availableColors,
                 selectedColors = uiState.selectedColors,
@@ -174,7 +163,7 @@ fun PaintScreen(
                 validationMessage = uiState.validationMessage,
                 onColorToggle = { viewModel.toggleMoodColor(it) },
                 onActiveColorSelect = { viewModel.setActiveColor(it) },
-                modifier = Modifier.padding(bottom = 8.dp)
+                modifier = Modifier.padding(bottom = 6.dp)
             )
         }
 
@@ -192,32 +181,41 @@ fun PaintScreen(
 }
 
 /**
- * Brush size presets selector for Freehand mode.
+ * Brush size / Spray dispersion radius selector.
  */
 @Composable
 private fun BrushSizeSelector(
     currentSize: Float,
+    mode: PaintMode,
     onSizeSelected: (Float) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val presets = listOf(
-        16f to "Fine",
-        32f to "Medium",
-        56f to "Broad"
+        18f to "Fine",
+        36f to "Medium",
+        64f to "Broad"
     )
 
     Row(
         modifier = modifier
             .glassCard(shape = RoundedCornerShape(20.dp), fillColor = GlassSurfaceUltraLow)
-            .padding(horizontal = 12.dp, vertical = 6.dp),
+            .padding(horizontal = 14.dp, vertical = 6.dp),
         horizontalArrangement = Arrangement.spacedBy(16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
+        Text(
+            text = if (mode == PaintMode.SPRAY) "Spray Radius:" else "Brush Size:",
+            fontSize = 11.sp,
+            color = TextSecondary,
+            fontWeight = FontWeight.Medium
+        )
+
         presets.forEach { (size, label) ->
             val isSelected = (currentSize == size)
             Row(
                 modifier = Modifier
                     .clip(RoundedCornerShape(12.dp))
+                    .background(if (isSelected) Color.White.copy(alpha = 0.14f) else Color.Transparent)
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null
@@ -228,7 +226,7 @@ private fun BrushSizeSelector(
             ) {
                 Box(
                     modifier = Modifier
-                        .size((size / 3f).coerceIn(6f, 16f).dp)
+                        .size((size / 3.5f).coerceIn(6f, 15f).dp)
                         .clip(CircleShape)
                         .background(if (isSelected) TextPrimary else TextTertiary)
                 )
@@ -240,32 +238,6 @@ private fun BrushSizeSelector(
                 )
             }
         }
-    }
-}
-
-@Composable
-private fun GradientModeHelper(
-    stopCount: Int,
-    modifier: Modifier = Modifier
-) {
-    Row(
-        modifier = modifier
-            .glassCard(shape = RoundedCornerShape(16.dp), fillColor = GlassSurfaceUltraLow)
-            .padding(horizontal = 16.dp, vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        Box(
-            modifier = Modifier
-                .size(6.dp)
-                .clip(CircleShape)
-                .background(Color(0xFF00E5FF))
-        )
-        Text(
-            text = "Drag glowing beads along the radius ray ($stopCount/5 stops)",
-            fontSize = 12.sp,
-            color = TextSecondary
-        )
     }
 }
 

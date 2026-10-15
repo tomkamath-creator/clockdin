@@ -6,39 +6,33 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Path
-import android.graphics.RadialGradient
-import android.graphics.Shader
 import com.vk.clockdin.domain.model.GradientStop
+import com.vk.clockdin.domain.model.MoodColor
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
-import kotlin.math.sqrt
 
 /**
- * Utility for rasterizing the painted orb to a crisp 512x512 circular transparent PNG
- * and extracting dominant gradient stops.
+ * Utility for rasterizing the painted orb (freehand brush + spray paint)
+ * to a crisp 512x512 circular transparent PNG and extracting dominant gradient stops.
  */
 object OrbRasterizer {
 
     private const val RASTER_SIZE = 512
 
     /**
-     * Rasterizes the current paint canvas to a 512x512 transparent circular PNG.
+     * Rasterizes the current paint strokes to a 512x512 transparent circular PNG.
      *
      * @param context Application context for accessing filesDir/orbs.
-     * @param mode Freehand brush or Gradient builder.
-     * @param strokes Freehand strokes with screen-space coordinates.
+     * @param strokes Freehand brush and spray paint strokes with screen-space coordinates.
      * @param canvasSize Width/height of the on-screen canvas view.
-     * @param gradientStops Stops if in gradient mode.
      * @return Absolute file path to the generated PNG.
      */
     suspend fun rasterizeToFile(
         context: Context,
-        mode: PaintMode,
         strokes: List<PaintStroke>,
-        canvasSize: Float,
-        gradientStops: List<GradientBuilderStop>
+        canvasSize: Float
     ): String = withContext(Dispatchers.IO) {
         val bitmap = Bitmap.createBitmap(RASTER_SIZE, RASTER_SIZE, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
@@ -52,11 +46,7 @@ object OrbRasterizer {
         }
         canvas.clipPath(clipPath)
 
-        if (mode == PaintMode.GRADIENT && gradientStops.isNotEmpty()) {
-            renderGradient(canvas, center, radius, gradientStops)
-        } else {
-            renderFreehand(canvas, strokes, canvasSize, center)
-        }
+        renderStrokes(canvas, strokes, canvasSize, center)
 
         // Save to app-private filesDir/orbs/
         val orbsDir = File(context.filesDir, "orbs").also { it.mkdirs() }
@@ -70,40 +60,7 @@ object OrbRasterizer {
         outputFile.absolutePath
     }
 
-    private fun renderGradient(
-        canvas: Canvas,
-        center: Float,
-        radius: Float,
-        stops: List<GradientBuilderStop>
-    ) {
-        val sortedStops = stops.sortedBy { it.position }
-        val colors = IntArray(sortedStops.size) { i ->
-            val c = sortedStops[i].color
-            android.graphics.Color.argb(
-                (c.alpha * 255).toInt(),
-                (c.red * 255).toInt(),
-                (c.green * 255).toInt(),
-                (c.blue * 255).toInt()
-            )
-        }
-        val positions = FloatArray(sortedStops.size) { i ->
-            sortedStops[i].position.coerceIn(0f, 1f)
-        }
-
-        val shader = RadialGradient(
-            center, center, radius,
-            colors, positions,
-            Shader.TileMode.CLAMP
-        )
-
-        val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            this.shader = shader
-            style = Paint.Style.FILL
-        }
-        canvas.drawCircle(center, center, radius, paint)
-    }
-
-    private fun renderFreehand(
+    private fun renderStrokes(
         canvas: Canvas,
         strokes: List<PaintStroke>,
         canvasSize: Float,
@@ -111,95 +68,121 @@ object OrbRasterizer {
     ) {
         val scale = if (canvasSize > 0f) RASTER_SIZE / canvasSize else 1f
 
-        // Draw soft base fill
+        // Draw soft deep space base fill
         val basePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = android.graphics.Color.argb(255, 18, 19, 26)
+            color = android.graphics.Color.argb(255, 10, 11, 16)
             style = Paint.Style.FILL
         }
         canvas.drawCircle(center, center, center, basePaint)
 
-        val strokePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        val brushPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             style = Paint.Style.STROKE
             strokeCap = Paint.Cap.ROUND
             strokeJoin = Paint.Join.ROUND
         }
 
+        val sprayPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.FILL
+        }
+
         for (stroke in strokes) {
-            val pts = stroke.points
-            if (pts.isEmpty()) continue
-
             val c = stroke.color
-            strokePaint.color = android.graphics.Color.argb(
-                (c.alpha * 255).toInt(),
-                (c.red * 255).toInt(),
-                (c.green * 255).toInt(),
-                (c.blue * 255).toInt()
-            )
-            strokePaint.strokeWidth = stroke.strokeWidth * scale
+            val r = (c.red * 255).toInt()
+            val g = (c.green * 255).toInt()
+            val b = (c.blue * 255).toInt()
 
-            if (pts.size == 1) {
-                val p = pts[0]
-                canvas.drawCircle(p.x * scale, p.y * scale, (stroke.strokeWidth * scale) / 2f, strokePaint)
-            } else {
-                val path = Path()
-                path.moveTo(pts[0].x * scale, pts[0].y * scale)
-                for (i in 1 until pts.size) {
-                    path.lineTo(pts[i].x * scale, pts[i].y * scale)
+            if (stroke.mode == PaintMode.SPRAY) {
+                // Render spray dots
+                for (dot in stroke.sprayDots) {
+                    val alpha = (dot.alpha * c.alpha * 255).toInt().coerceIn(0, 255)
+                    sprayPaint.color = android.graphics.Color.argb(alpha, r, g, b)
+                    canvas.drawCircle(
+                        dot.x * scale,
+                        dot.y * scale,
+                        (dot.radius * scale).coerceAtLeast(1f),
+                        sprayPaint
+                    )
                 }
-                canvas.drawPath(path, strokePaint)
+            } else {
+                // Render brush path
+                val pts = stroke.points
+                if (pts.isEmpty()) continue
+
+                brushPaint.color = android.graphics.Color.argb(
+                    (c.alpha * 255).toInt(),
+                    r, g, b
+                )
+                brushPaint.strokeWidth = stroke.strokeWidth * scale
+
+                if (pts.size == 1) {
+                    val p = pts[0]
+                    val fillCirclePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                        color = brushPaint.color
+                        style = Paint.Style.FILL
+                    }
+                    canvas.drawCircle(
+                        p.x * scale,
+                        p.y * scale,
+                        (stroke.strokeWidth * scale) / 2f,
+                        fillCirclePaint
+                    )
+                } else {
+                    val path = Path()
+                    path.moveTo(pts[0].x * scale, pts[0].y * scale)
+                    for (i in 1 until pts.size) {
+                        path.lineTo(pts[i].x * scale, pts[i].y * scale)
+                    }
+                    canvas.drawPath(path, brushPaint)
+                }
             }
         }
     }
 
     /**
-     * Extracts 2-5 dominant gradient stops from the rendered orb or stops list.
+     * Extracts 2-5 dominant gradient stops from the painted strokes and fallback colors.
      */
     fun extractDominantStops(
-        mode: PaintMode,
-        gradientStops: List<GradientBuilderStop>,
         strokes: List<PaintStroke>,
-        fallbackColors: List<com.vk.clockdin.domain.model.MoodColor>
+        fallbackColors: List<MoodColor>
     ): List<GradientStop> {
-        if (mode == PaintMode.GRADIENT && gradientStops.isNotEmpty()) {
-            return gradientStops.sortedBy { it.position }.map { stop ->
-                val hex = String.format("#%02X%02X%02X",
-                    (stop.color.red * 255).toInt(),
-                    (stop.color.green * 255).toInt(),
-                    (stop.color.blue * 255).toInt()
-                )
-                GradientStop(
-                    hex = hex,
-                    position = stop.position,
-                    label = stop.moodColor?.name
-                )
-            }
-        }
-
-        // In freehand mode, extract from distinct colors used in strokes
         val distinctColors = strokes.map { it.color }.distinct()
-        if (distinctColors.isNotEmpty()) {
-            val count = distinctColors.size.coerceIn(2, 5)
-            return distinctColors.take(count).mapIndexed { index, c ->
-                val hex = String.format("#%02X%02X%02X",
-                    (c.red * 255).toInt(),
-                    (c.green * 255).toInt(),
-                    (c.blue * 255).toInt()
-                )
-                val pos = if (count > 1) index.toFloat() / (count - 1) else 0f
-                GradientStop(hex = hex, position = pos)
+        val hexStops = mutableListOf<String>()
+
+        // Collect colors from strokes first
+        for (c in distinctColors) {
+            val hex = String.format("#%02X%02X%02X",
+                (c.red * 255).toInt(),
+                (c.green * 255).toInt(),
+                (c.blue * 255).toInt()
+            )
+            if (!hexStops.contains(hex)) {
+                hexStops.add(hex)
+            }
+            if (hexStops.size >= 5) break
+        }
+
+        // If fewer than 2 colors in strokes, augment with selected mood colors
+        if (hexStops.size < 2) {
+            for (fallback in fallbackColors) {
+                val hex = fallback.hex.uppercase()
+                if (!hexStops.contains(hex)) {
+                    hexStops.add(hex)
+                }
+                if (hexStops.size >= 2) break
             }
         }
 
-        // Fallback to selected mood colors
-        val safeColors = fallbackColors.ifEmpty {
-            listOf(
-                com.vk.clockdin.domain.model.MoodColor(0, "Joy", "#FFC83D", com.vk.clockdin.domain.model.MoodCategory.POSITIVE, 0),
-                com.vk.clockdin.domain.model.MoodColor(1, "Calm", "#2FD4A7", com.vk.clockdin.domain.model.MoodCategory.POSITIVE, 1)
-            )
+        // Fallback default if still under 2
+        if (hexStops.size < 2) {
+            if (!hexStops.contains("#FFC83D")) hexStops.add("#FFC83D")
+            if (!hexStops.contains("#2FD4A7")) hexStops.add("#2FD4A7")
         }
-        return safeColors.take(5).mapIndexed { index, mc ->
-            val pos = if (safeColors.size > 1) index.toFloat() / (safeColors.size - 1) else 0f
-            GradientStop(hex = mc.hex, position = pos, label = mc.name)
+
+        val total = hexStops.size.coerceIn(2, 5)
+        return hexStops.take(total).mapIndexed { index, hex ->
+            val pos = if (total > 1) index.toFloat() / (total - 1) else 0f
+            val matchingLabel = fallbackColors.firstOrNull { it.hex.equals(hex, ignoreCase = true) }?.name
+            GradientStop(hex = hex, position = pos, label = matchingLabel)
         }
     }
 }

@@ -12,55 +12,23 @@ import org.junit.Test
 class OrbRasterizerTest {
 
     @Test
-    fun extractDominantStops_gradientMode_preservesSortedPositionsAndLabels() {
-        val stops = listOf(
-            GradientBuilderStop(
-                color = Color(1f, 0f, 0f),
-                position = 1f,
-                moodColor = MoodColor(1, "Passionate", "#FF0000", MoodCategory.POSITIVE, 1)
-            ),
-            GradientBuilderStop(
-                color = Color(0f, 0f, 1f),
-                position = 0f,
-                moodColor = MoodColor(2, "Calm", "#0000FF", MoodCategory.POSITIVE, 0)
-            )
-        )
-
-        val result = OrbRasterizer.extractDominantStops(
-            mode = PaintMode.GRADIENT,
-            gradientStops = stops,
-            strokes = emptyList(),
-            fallbackColors = emptyList()
-        )
-
-        assertEquals(2, result.size)
-        assertEquals(0f, result[0].position, 0.001f)
-        assertEquals("#0000FF", result[0].hex)
-        assertEquals("Calm", result[0].label)
-
-        assertEquals(1f, result[1].position, 0.001f)
-        assertEquals("#FF0000", result[1].hex)
-        assertEquals("Passionate", result[1].label)
-    }
-
-    @Test
-    fun extractDominantStops_freehandMode_extractsDistinctColors() {
+    fun extractDominantStops_brushMode_extractsDistinctColors() {
         val strokes = listOf(
             PaintStroke(
+                mode = PaintMode.BRUSH,
                 points = listOf(Offset(10f, 10f)),
-                color = Color(1f, 0.5f, 0f),
+                color = Color(1f, 0f, 0f),
                 strokeWidth = 24f
             ),
             PaintStroke(
+                mode = PaintMode.BRUSH,
                 points = listOf(Offset(20f, 20f)),
-                color = Color(0f, 0.8f, 0.4f),
+                color = Color(0f, 1f, 0f),
                 strokeWidth = 24f
             )
         )
 
         val result = OrbRasterizer.extractDominantStops(
-            mode = PaintMode.FREEHAND,
-            gradientStops = emptyList(),
             strokes = strokes,
             fallbackColors = emptyList()
         )
@@ -68,8 +36,41 @@ class OrbRasterizerTest {
         assertEquals(2, result.size)
         assertEquals(0f, result[0].position, 0.001f)
         assertEquals(1f, result[1].position, 0.001f)
-        assertTrue(result[0].hex.startsWith("#"))
-        assertTrue(result[1].hex.startsWith("#"))
+        assertEquals("#FF0000", result[0].hex)
+        assertEquals("#00FF00", result[1].hex)
+    }
+
+    @Test
+    fun extractDominantStops_sprayMode_extractsSprayStrokeColors() {
+        val sprayDots = listOf(
+            SprayDot(x = 100f, y = 100f, radius = 2f, alpha = 0.8f),
+            SprayDot(x = 105f, y = 102f, radius = 1.5f, alpha = 0.6f)
+        )
+        val strokes = listOf(
+            PaintStroke(
+                mode = PaintMode.SPRAY,
+                sprayDots = sprayDots,
+                color = Color(0f, 0f, 1f),
+                strokeWidth = 36f
+            ),
+            PaintStroke(
+                mode = PaintMode.SPRAY,
+                sprayDots = sprayDots,
+                color = Color(1f, 1f, 0f),
+                strokeWidth = 36f
+            )
+        )
+
+        val result = OrbRasterizer.extractDominantStops(
+            strokes = strokes,
+            fallbackColors = emptyList()
+        )
+
+        assertEquals(2, result.size)
+        assertEquals("#0000FF", result[0].hex)
+        assertEquals("#FFFF00", result[1].hex)
+        assertEquals(0f, result[0].position, 0.001f)
+        assertEquals(1f, result[1].position, 0.001f)
     }
 
     @Test
@@ -81,16 +82,14 @@ class OrbRasterizerTest {
         )
 
         val result = OrbRasterizer.extractDominantStops(
-            mode = PaintMode.FREEHAND,
-            gradientStops = emptyList(),
             strokes = emptyList(),
             fallbackColors = fallback
         )
 
-        assertEquals(3, result.size)
+        assertEquals(2, result.size)
         assertEquals("#3D82FF", result[0].hex)
         assertEquals("Focus", result[0].label)
         assertEquals(0f, result[0].position, 0.001f)
-        assertEquals(1f, result[2].position, 0.001f)
+        assertEquals(1f, result[1].position, 0.001f)
     }
 }

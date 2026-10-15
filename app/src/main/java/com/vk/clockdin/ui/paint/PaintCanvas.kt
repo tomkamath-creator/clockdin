@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -22,12 +21,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -35,28 +34,29 @@ import androidx.compose.ui.unit.dp
 import com.vk.clockdin.domain.model.MoodColor
 import com.vk.clockdin.ui.galaxy.GalaxyShader
 import com.vk.clockdin.ui.theme.GlassBorderHairline
+import kotlin.math.cos
+import kotlin.math.sin
 import kotlin.math.sqrt
+import kotlin.random.Random
 
 /**
  * Interactive circular painting canvas for mood orb creation.
- * Supports both Freehand brush drawing and Radial Gradient builder manipulation.
+ * Supports both Fluid Freehand Brush and Cosmic Spray Paint inside the orb.
  */
 @Composable
 fun PaintCanvas(
     mode: PaintMode,
     strokes: List<PaintStroke>,
-    gradientStops: List<GradientBuilderStop>,
     activeColor: MoodColor?,
     brushSize: Float,
     onAddStroke: (PaintStroke) -> Unit,
-    onUpdateGradientStopPosition: (id: String, position: Float) -> Unit,
-    onRemoveGradientStop: (id: String) -> Unit,
     onCanvasSizeMeasured: (Float) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // Current in-progress stroke for freehand drawing
+    // Current in-progress stroke data
     var currentPoints by remember { mutableStateOf<List<Offset>>(emptyList()) }
-    var activeDraggingStopId by remember { mutableStateOf<String?>(null) }
+    var currentSprayDots by remember { mutableStateOf<List<SprayDot>>(emptyList()) }
+    var activeTouchOffset by remember { mutableStateOf<Offset?>(null) }
 
     val resolvedActiveColor = remember(activeColor) {
         activeColor?.let { parseColor(it.hex) } ?: Color(0xFFFFC83D)
@@ -68,7 +68,7 @@ fun PaintCanvas(
             .padding(16.dp),
         contentAlignment = Alignment.Center
     ) {
-        // Ambient background glow matching the dominant / active mood
+        // Ambient background glow matching the active mood
         Canvas(modifier = Modifier.fillMaxSize()) {
             val center = Offset(size.width / 2f, size.height / 2f)
             val glowRadius = size.width / 2f * 1.25f
@@ -120,177 +120,132 @@ fun PaintCanvas(
             modifier = Modifier
                 .fillMaxSize()
                 .clip(CircleShape)
-                .background(Color(0xFF06070B))
+                .background(Color(0xFF07080E))
                 .border(1.dp, GlassBorderHairline, CircleShape)
                 .onGloballyPositioned { coordinates ->
                     onCanvasSizeMeasured(coordinates.size.width.toFloat())
                 }
                 .pointerInput(mode, resolvedActiveColor, brushSize) {
-                    if (mode == PaintMode.FREEHAND) {
-                        detectDragGestures(
-                            onDragStart = { offset ->
+                    detectDragGestures(
+                        onDragStart = { offset ->
+                            activeTouchOffset = offset
+                            if (mode == PaintMode.BRUSH) {
                                 currentPoints = listOf(offset)
-                            },
-                            onDrag = { change, _ ->
-                                change.consume()
-                                currentPoints = currentPoints + change.position
-                            },
-                            onDragEnd = {
-                                if (currentPoints.isNotEmpty()) {
-                                    onAddStroke(
-                                        PaintStroke(
-                                            points = currentPoints,
-                                            color = resolvedActiveColor,
-                                            strokeWidth = brushSize
-                                        )
-                                    )
-                                }
+                                currentSprayDots = emptyList()
+                            } else {
                                 currentPoints = emptyList()
-                            },
-                            onDragCancel = {
-                                currentPoints = emptyList()
+                                currentSprayDots = generateSprayDots(offset, brushSize, count = 22)
                             }
-                        )
-                    }
-                }
-                .pointerInput(mode, resolvedActiveColor, brushSize) {
-                    if (mode == PaintMode.FREEHAND) {
-                        detectTapGestures(
-                            onTap = { offset ->
+                        },
+                        onDrag = { change, _ ->
+                            change.consume()
+                            activeTouchOffset = change.position
+                            if (mode == PaintMode.BRUSH) {
+                                currentPoints = currentPoints + change.position
+                            } else {
+                                val newDots = generateSprayDots(change.position, brushSize, count = 16)
+                                currentSprayDots = currentSprayDots + newDots
+                            }
+                        },
+                        onDragEnd = {
+                            if (mode == PaintMode.BRUSH && currentPoints.isNotEmpty()) {
                                 onAddStroke(
                                     PaintStroke(
-                                        points = listOf(offset),
+                                        mode = PaintMode.BRUSH,
+                                        points = currentPoints,
+                                        color = resolvedActiveColor,
+                                        strokeWidth = brushSize
+                                    )
+                                )
+                            } else if (mode == PaintMode.SPRAY && currentSprayDots.isNotEmpty()) {
+                                onAddStroke(
+                                    PaintStroke(
+                                        mode = PaintMode.SPRAY,
+                                        sprayDots = currentSprayDots,
                                         color = resolvedActiveColor,
                                         strokeWidth = brushSize
                                     )
                                 )
                             }
-                        )
-                    }
+                            currentPoints = emptyList()
+                            currentSprayDots = emptyList()
+                            activeTouchOffset = null
+                        },
+                        onDragCancel = {
+                            currentPoints = emptyList()
+                            currentSprayDots = emptyList()
+                            activeTouchOffset = null
+                        }
+                    )
                 }
-                .pointerInput(mode, gradientStops) {
-                    if (mode == PaintMode.GRADIENT) {
-                        detectDragGestures(
-                            onDragStart = { touchOffset ->
-                                val center = Offset(size.width / 2f, size.height / 2f)
-                                val radius = size.width / 2f
-                                val touchThresholdPx = 48.dp.toPx()
-
-                                // Find nearest stop handle along the ray
-                                val nearestStop = gradientStops.minByOrNull { stop ->
-                                    val handlePos = Offset(
-                                        x = center.x + stop.position * radius,
-                                        y = center.y
+                .pointerInput(mode, resolvedActiveColor, brushSize) {
+                    detectTapGestures(
+                        onTap = { offset ->
+                            if (mode == PaintMode.BRUSH) {
+                                onAddStroke(
+                                    PaintStroke(
+                                        mode = PaintMode.BRUSH,
+                                        points = listOf(offset),
+                                        color = resolvedActiveColor,
+                                        strokeWidth = brushSize
                                     )
-                                    (handlePos - touchOffset).getDistance()
-                                }
-
-                                if (nearestStop != null) {
-                                    val handlePos = Offset(
-                                        x = center.x + nearestStop.position * radius,
-                                        y = center.y
+                                )
+                            } else {
+                                // Spray burst on tap
+                                val burstDots = generateSprayDots(offset, brushSize, count = 35)
+                                onAddStroke(
+                                    PaintStroke(
+                                        mode = PaintMode.SPRAY,
+                                        sprayDots = burstDots,
+                                        color = resolvedActiveColor,
+                                        strokeWidth = brushSize
                                     )
-                                    if ((handlePos - touchOffset).getDistance() <= touchThresholdPx) {
-                                        activeDraggingStopId = nearestStop.id
-                                    }
-                                }
-                            },
-                            onDrag = { change, _ ->
-                                change.consume()
-                                val stopId = activeDraggingStopId
-                                if (stopId != null) {
-                                    val center = Offset(size.width / 2f, size.height / 2f)
-                                    val radius = size.width / 2f
-                                    val normalizedPos = ((change.position.x - center.x) / radius).coerceIn(0f, 1f)
-                                    onUpdateGradientStopPosition(stopId, normalizedPos)
-                                }
-                            },
-                            onDragEnd = {
-                                activeDraggingStopId = null
-                            },
-                            onDragCancel = {
-                                activeDraggingStopId = null
+                                )
                             }
-                        )
-                    }
+                        }
+                    )
                 }
         ) {
             Canvas(modifier = Modifier.fillMaxSize()) {
                 val center = Offset(size.width / 2f, size.height / 2f)
                 val radius = size.width / 2f
 
-                if (mode == PaintMode.GRADIENT && gradientStops.isNotEmpty()) {
-                    // 1. Draw radial gradient
-                    val sortedStops = gradientStops.sortedBy { it.position }
-                    val colorStops = sortedStops.map {
-                        it.position.coerceIn(0f, 1f) to it.color
-                    }.toTypedArray()
-
-                    drawCircle(
-                        brush = Brush.radialGradient(
-                            colorStops = colorStops,
-                            center = center,
-                            radius = radius
-                        ),
-                        radius = radius,
-                        center = center
-                    )
-
-                    // 2. Draw gradient manipulation ray guide (horizontal from center to right)
-                    drawLine(
-                        color = Color.White.copy(alpha = 0.35f),
-                        start = center,
-                        end = Offset(center.x + radius, center.y),
-                        strokeWidth = 2.dp.toPx()
-                    )
-
-                    // 3. Draw draggable handle beads on the ray
-                    gradientStops.forEach { stop ->
-                        val handleX = center.x + stop.position * radius
-                        val handleY = center.y
-                        val isDragging = activeDraggingStopId == stop.id
-                        val beadRadius = if (isDragging) 15.dp.toPx() else 11.dp.toPx()
-
-                        // Outer halo
-                        drawCircle(
-                            color = stop.color.copy(alpha = 0.45f),
-                            radius = beadRadius + 6.dp.toPx(),
-                            center = Offset(handleX, handleY)
-                        )
-                        // Color bead body
-                        drawCircle(
-                            color = stop.color,
-                            radius = beadRadius,
-                            center = Offset(handleX, handleY)
-                        )
-                        // Crisp white border
-                        drawCircle(
-                            color = Color.White,
-                            radius = beadRadius,
-                            center = Offset(handleX, handleY),
-                            style = Stroke(width = 2.dp.toPx())
-                        )
+                // 1. Render all committed strokes
+                for (stroke in strokes) {
+                    if (stroke.mode == PaintMode.SPRAY) {
+                        drawSprayStroke(stroke)
+                    } else {
+                        drawBrushStroke(stroke)
                     }
-                } else {
-                    // Freehand Brush Mode
-                    // Render completed strokes
-                    strokes.forEach { stroke ->
-                        drawPaintStroke(stroke)
-                    }
+                }
 
-                    // Render active in-progress stroke
-                    if (currentPoints.isNotEmpty()) {
-                        drawPaintStroke(
-                            PaintStroke(
-                                points = currentPoints,
-                                color = resolvedActiveColor,
-                                strokeWidth = brushSize
-                            )
+                // 2. Render active in-progress stroke
+                if (mode == PaintMode.BRUSH && currentPoints.isNotEmpty()) {
+                    drawBrushStroke(
+                        PaintStroke(
+                            mode = PaintMode.BRUSH,
+                            points = currentPoints,
+                            color = resolvedActiveColor,
+                            strokeWidth = brushSize
+                        )
+                    )
+                } else if (mode == PaintMode.SPRAY && currentSprayDots.isNotEmpty()) {
+                    drawSprayDotsDirect(currentSprayDots, resolvedActiveColor)
+                }
+
+                // 3. Spray nozzle cursor ring when user is dragging in Spray mode
+                activeTouchOffset?.let { touchPos ->
+                    if (mode == PaintMode.SPRAY) {
+                        drawCircle(
+                            color = resolvedActiveColor.copy(alpha = 0.35f),
+                            radius = brushSize / 2f,
+                            center = touchPos,
+                            style = Stroke(width = 1.dp.toPx())
                         )
                     }
                 }
 
-                // Inner subtle glass specular rim
+                // 4. Inner subtle glass specular rim
                 drawCircle(
                     color = Color.White.copy(alpha = 0.08f),
                     radius = radius - 1.dp.toPx(),
@@ -303,9 +258,34 @@ fun PaintCanvas(
 }
 
 /**
- * Draws a smooth PaintStroke on Canvas Scope.
+ * Generates randomized aerosol / spray paint droplets around a central point.
  */
-private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawPaintStroke(stroke: PaintStroke) {
+private fun generateSprayDots(center: Offset, sprayDiameter: Float, count: Int): List<SprayDot> {
+    val maxR = sprayDiameter / 2f
+    val dots = ArrayList<SprayDot>(count)
+    for (i in 0 until count) {
+        // Uniform circular distribution with radial falloff
+        val u = Random.nextFloat()
+        val r = maxR * sqrt(u)
+        val theta = Random.nextFloat() * (2f * Math.PI.toFloat())
+
+        val x = center.x + r * cos(theta)
+        val y = center.y + r * sin(theta)
+
+        // Drop size ranges between 1.5dp and 3.5dp with central density
+        val dotRadius = (1.2f + Random.nextFloat() * 2.2f)
+        val falloff = (1f - (r / maxR).coerceIn(0f, 1f))
+        val alpha = (0.25f + Random.nextFloat() * 0.70f) * (0.4f + falloff * 0.6f)
+
+        dots.add(SprayDot(x = x, y = y, radius = dotRadius, alpha = alpha.coerceIn(0.1f, 1f)))
+    }
+    return dots
+}
+
+/**
+ * Draws a smooth Brush PaintStroke with quadratic Bezier smoothing.
+ */
+private fun DrawScope.drawBrushStroke(stroke: PaintStroke) {
     if (stroke.points.isEmpty()) return
 
     if (stroke.points.size == 1) {
@@ -320,7 +300,6 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawPaintStroke(str
             for (i in 1 until stroke.points.size) {
                 val p0 = stroke.points[i - 1]
                 val p1 = stroke.points[i]
-                // Quadratic bezier midpoint smoothing for fluid brush feel
                 val midX = (p0.x + p1.x) / 2f
                 val midY = (p0.y + p1.y) / 2f
                 quadraticTo(p0.x, p0.y, midX, midY)
@@ -336,6 +315,29 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawPaintStroke(str
                 cap = StrokeCap.Round,
                 join = StrokeJoin.Round
             )
+        )
+    }
+}
+
+/**
+ * Draws a Spray paint stroke consisting of multiple aerosol droplets.
+ */
+private fun DrawScope.drawSprayStroke(stroke: PaintStroke) {
+    for (dot in stroke.sprayDots) {
+        drawCircle(
+            color = stroke.color.copy(alpha = (stroke.color.alpha * dot.alpha).coerceIn(0f, 1f)),
+            radius = dot.radius,
+            center = Offset(dot.x, dot.y)
+        )
+    }
+}
+
+private fun DrawScope.drawSprayDotsDirect(dots: List<SprayDot>, baseColor: Color) {
+    for (dot in dots) {
+        drawCircle(
+            color = baseColor.copy(alpha = (baseColor.alpha * dot.alpha).coerceIn(0f, 1f)),
+            radius = dot.radius,
+            center = Offset(dot.x, dot.y)
         )
     }
 }

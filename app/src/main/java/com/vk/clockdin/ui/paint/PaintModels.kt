@@ -3,43 +3,43 @@ package com.vk.clockdin.ui.paint
 
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import com.vk.clockdin.domain.model.MoodCategory
+import com.vk.clockdin.domain.model.GradientStop
 import com.vk.clockdin.domain.model.MoodColor
-import java.util.UUID
 
 enum class PaintMode {
-    FREEHAND,
-    GRADIENT
+    BRUSH,
+    SPRAY
 }
 
 /**
- * A single freehand brush stroke containing continuous points, color, and brush radius.
+ * A single spray droplet particle within a spray paint stroke.
+ */
+data class SprayDot(
+    val x: Float,
+    val y: Float,
+    val radius: Float,
+    val alpha: Float
+)
+
+/**
+ * A paint stroke representing either a smooth solid brush stroke
+ * or a cosmic aerosol spray particle cloud.
  */
 data class PaintStroke(
-    val points: List<Offset>,
+    val mode: PaintMode = PaintMode.BRUSH,
+    val points: List<Offset> = emptyList(),
+    val sprayDots: List<SprayDot> = emptyList(),
     val color: Color,
     val strokeWidth: Float
 )
 
-/**
- * A radial gradient stop in gradient builder mode.
- * Position represents normalized distance from center (0.0 to 1.0).
- */
-data class GradientBuilderStop(
-    val id: String = UUID.randomUUID().toString(),
-    val color: Color,
-    val position: Float,
-    val moodColor: MoodColor? = null
-)
-
 data class PaintUiState(
-    val mode: PaintMode = PaintMode.FREEHAND,
+    val mode: PaintMode = PaintMode.BRUSH,
     val availableColors: List<MoodColor> = emptyList(),
     val selectedColors: List<MoodColor> = emptyList(),
     val activeColor: MoodColor? = null,
     val strokes: List<PaintStroke> = emptyList(),
-    val gradientStops: List<GradientBuilderStop> = emptyList(),
-    val brushSize: Float = 32f,
+    val brushSize: Float = 36f,
     val isShaking: Boolean = false,
     val validationMessage: String? = null,
     val isRasterizing: Boolean = false,
@@ -49,7 +49,7 @@ data class PaintUiState(
 sealed interface PaintEvent {
     data class ProceedToSave(
         val orbImagePath: String,
-        val dominantColors: List<com.vk.clockdin.domain.model.GradientStop>
+        val dominantColors: List<GradientStop>
     ) : PaintEvent
     data object ShowDiscardConfirm : PaintEvent
     data object TriggerHaptic : PaintEvent

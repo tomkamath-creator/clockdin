@@ -36,13 +36,14 @@ class PaintViewModel @Inject constructor(
     private var hapticsEnabled: Boolean = true
 
     init {
-        // Collect palette colors and settings
+        // Collect user settings
         viewModelScope.launch {
             settingsRepository.settingsFlow.collect { settings ->
                 hapticsEnabled = settings.hapticsEnabled
             }
         }
 
+        // Collect available mood palette colors
         viewModelScope.launch {
             moodColorRepository.getAllColors().collect { colors ->
                 _uiState.update { state ->
@@ -53,20 +54,10 @@ class PaintViewModel @Inject constructor(
                     }
                     val active = state.activeColor ?: defaultSelected.firstOrNull()
 
-                    val initialStops = if (state.gradientStops.isEmpty() && defaultSelected.size >= 2) {
-                        listOf(
-                            GradientBuilderStop(color = parseColor(defaultSelected[0].hex), position = 0f, moodColor = defaultSelected[0]),
-                            GradientBuilderStop(color = parseColor(defaultSelected[1].hex), position = 1f, moodColor = defaultSelected[1])
-                        )
-                    } else {
-                        state.gradientStops
-                    }
-
                     state.copy(
                         availableColors = colors,
                         selectedColors = defaultSelected,
-                        activeColor = active,
-                        gradientStops = initialStops
+                        activeColor = active
                     )
                 }
             }
@@ -75,10 +66,25 @@ class PaintViewModel @Inject constructor(
 
     fun setMode(mode: PaintMode) {
         _uiState.update { it.copy(mode = mode) }
+        triggerHaptic()
     }
 
     fun setActiveColor(color: MoodColor) {
-        _uiState.update { it.copy(activeColor = color) }
+        _uiState.update { state ->
+            val updatedSelected = if (!state.selectedColors.contains(color)) {
+                if (state.selectedColors.size < 5) {
+                    state.selectedColors + color
+                } else {
+                    state.selectedColors
+                }
+            } else {
+                state.selectedColors
+            }
+            state.copy(
+                activeColor = color,
+                selectedColors = updatedSelected
+            )
+        }
         triggerHaptic()
     }
 
@@ -149,49 +155,7 @@ class PaintViewModel @Inject constructor(
     }
 
     fun setBrushSize(size: Float) {
-        _uiState.update { it.copy(brushSize = size.coerceIn(12f, 72f)) }
-    }
-
-    fun addGradientStop(moodColor: MoodColor, position: Float) {
-        if (_uiState.value.gradientStops.size >= 5) {
-            triggerShake("Maximum 5 gradient stops")
-            return
-        }
-        val stop = GradientBuilderStop(
-            color = parseColor(moodColor.hex),
-            position = position.coerceIn(0f, 1f),
-            moodColor = moodColor
-        )
-        _uiState.update {
-            it.copy(
-                gradientStops = it.gradientStops + stop,
-                hasUnsavedChanges = true
-            )
-        }
-        triggerHaptic()
-    }
-
-    fun updateGradientStopPosition(id: String, position: Float) {
-        _uiState.update { state ->
-            val updated = state.gradientStops.map { stop ->
-                if (stop.id == id) stop.copy(position = position.coerceIn(0f, 1f)) else stop
-            }
-            state.copy(gradientStops = updated, hasUnsavedChanges = true)
-        }
-    }
-
-    fun removeGradientStop(id: String) {
-        if (_uiState.value.gradientStops.size <= 2) {
-            triggerShake("Minimum 2 gradient stops required")
-            return
-        }
-        _uiState.update { state ->
-            state.copy(
-                gradientStops = state.gradientStops.filterNot { it.id == id },
-                hasUnsavedChanges = true
-            )
-        }
-        triggerHaptic()
+        _uiState.update { it.copy(brushSize = size.coerceIn(12f, 84f)) }
     }
 
     fun onNextClicked(canvasSizePx: Float) {
@@ -206,15 +170,11 @@ class PaintViewModel @Inject constructor(
 
             val imagePath = OrbRasterizer.rasterizeToFile(
                 context = context,
-                mode = state.mode,
                 strokes = state.strokes,
-                canvasSize = canvasSizePx,
-                gradientStops = state.gradientStops
+                canvasSize = canvasSizePx
             )
 
             val dominantStops = OrbRasterizer.extractDominantStops(
-                mode = state.mode,
-                gradientStops = state.gradientStops,
                 strokes = state.strokes,
                 fallbackColors = state.selectedColors
             )
@@ -238,20 +198,6 @@ class PaintViewModel @Inject constructor(
             viewModelScope.launch {
                 _eventChannel.send(PaintEvent.TriggerHaptic)
             }
-        }
-    }
-
-    private fun parseColor(hex: String): Color {
-        return try {
-            val cleanHex = hex.removePrefix("#")
-            val colorLong = cleanHex.toLong(16)
-            if (cleanHex.length == 6) {
-                Color(colorLong or 0xFF000000)
-            } else {
-                Color(colorLong)
-            }
-        } catch (_: Exception) {
-            Color(0xFFFFC83D)
         }
     }
 }
