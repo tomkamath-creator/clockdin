@@ -38,33 +38,25 @@ fun ClockdinNavHost(
         startDestination = Screen.Splash.route,
         modifier = modifier,
         enterTransition = {
-            slideInHorizontally(
-                initialOffsetX = { fullWidth -> (fullWidth * 0.12f).toInt() },
-                animationSpec = tween(380, easing = FastOutSlowInEasing)
-            ) + fadeIn(animationSpec = tween(380, easing = FastOutSlowInEasing))
+            fadeIn(animationSpec = tween(240, easing = FastOutSlowInEasing)) +
+                scaleIn(initialScale = 0.96f, animationSpec = tween(240, easing = FastOutSlowInEasing))
         },
         exitTransition = {
-            slideOutHorizontally(
-                targetOffsetX = { fullWidth -> -(fullWidth * 0.12f).toInt() },
-                animationSpec = tween(320, easing = FastOutSlowInEasing)
-            ) + fadeOut(animationSpec = tween(320, easing = FastOutSlowInEasing))
+            fadeOut(animationSpec = tween(180, easing = FastOutSlowInEasing)) +
+                scaleOut(targetScale = 1.02f, animationSpec = tween(180, easing = FastOutSlowInEasing))
         },
         popEnterTransition = {
-            slideInHorizontally(
-                initialOffsetX = { fullWidth -> -(fullWidth * 0.12f).toInt() },
-                animationSpec = tween(380, easing = FastOutSlowInEasing)
-            ) + fadeIn(animationSpec = tween(380, easing = FastOutSlowInEasing))
+            fadeIn(animationSpec = tween(240, easing = FastOutSlowInEasing)) +
+                scaleIn(initialScale = 1.02f, animationSpec = tween(240, easing = FastOutSlowInEasing))
         },
         popExitTransition = {
-            slideOutHorizontally(
-                targetOffsetX = { fullWidth -> (fullWidth * 0.12f).toInt() },
-                animationSpec = tween(320, easing = FastOutSlowInEasing)
-            ) + fadeOut(animationSpec = tween(320, easing = FastOutSlowInEasing))
+            fadeOut(animationSpec = tween(180, easing = FastOutSlowInEasing)) +
+                scaleOut(targetScale = 0.96f, animationSpec = tween(180, easing = FastOutSlowInEasing))
         }
     ) {
         composable(
             route = Screen.Splash.route,
-            exitTransition = { fadeOut(animationSpec = tween(600)) }
+            exitTransition = { fadeOut(animationSpec = tween(400)) }
         ) {
             IntroSplashScreen(
                 onSplashComplete = {
@@ -77,7 +69,8 @@ fun ClockdinNavHost(
 
         composable(
             route = Screen.Galaxy.route,
-            enterTransition = { fadeIn(animationSpec = tween(500)) }
+            enterTransition = { fadeIn(animationSpec = tween(240)) },
+            popEnterTransition = { fadeIn(animationSpec = tween(240)) }
         ) {
             com.vk.clockdin.ui.galaxy.GalaxyHomeScreen(
                 newlySavedOrb = newlySavedOrb,
@@ -93,15 +86,24 @@ fun ClockdinNavHost(
             route = Screen.Paint.route,
             enterTransition = {
                 slideInVertically(
-                    initialOffsetY = { (it * 0.22f).toInt() },
-                    animationSpec = tween(400, easing = FastOutSlowInEasing)
-                ) + fadeIn(animationSpec = tween(400, easing = FastOutSlowInEasing))
+                    initialOffsetY = { (it * 0.10f).toInt() },
+                    animationSpec = tween(240, easing = FastOutSlowInEasing)
+                ) + fadeIn(animationSpec = tween(240, easing = FastOutSlowInEasing))
             },
             exitTransition = {
                 slideOutVertically(
-                    targetOffsetY = { (it * 0.22f).toInt() },
-                    animationSpec = tween(350, easing = FastOutSlowInEasing)
-                ) + fadeOut(animationSpec = tween(350, easing = FastOutSlowInEasing))
+                    targetOffsetY = { (it * 0.10f).toInt() },
+                    animationSpec = tween(180, easing = FastOutSlowInEasing)
+                ) + fadeOut(animationSpec = tween(180, easing = FastOutSlowInEasing))
+            },
+            popEnterTransition = {
+                fadeIn(animationSpec = tween(200, easing = FastOutSlowInEasing))
+            },
+            popExitTransition = {
+                slideOutVertically(
+                    targetOffsetY = { (it * 0.10f).toInt() },
+                    animationSpec = tween(180, easing = FastOutSlowInEasing)
+                ) + fadeOut(animationSpec = tween(180, easing = FastOutSlowInEasing))
             }
         ) {
             com.vk.clockdin.ui.paint.PaintScreen(
@@ -174,15 +176,24 @@ fun ClockdinNavHost(
             route = Screen.Settings.route,
             enterTransition = {
                 slideInHorizontally(
-                    initialOffsetX = { it },
-                    animationSpec = tween(380, easing = FastOutSlowInEasing)
-                ) + fadeIn(animationSpec = tween(380, easing = FastOutSlowInEasing))
+                    initialOffsetX = { (it * 0.25f).toInt() },
+                    animationSpec = tween(240, easing = FastOutSlowInEasing)
+                ) + fadeIn(animationSpec = tween(240, easing = FastOutSlowInEasing))
             },
             exitTransition = {
                 slideOutHorizontally(
-                    targetOffsetX = { it },
-                    animationSpec = tween(320, easing = FastOutSlowInEasing)
-                ) + fadeOut(animationSpec = tween(320, easing = FastOutSlowInEasing))
+                    targetOffsetX = { (it * 0.25f).toInt() },
+                    animationSpec = tween(180, easing = FastOutSlowInEasing)
+                ) + fadeOut(animationSpec = tween(180, easing = FastOutSlowInEasing))
+            },
+            popEnterTransition = {
+                fadeIn(animationSpec = tween(200, easing = FastOutSlowInEasing))
+            },
+            popExitTransition = {
+                slideOutHorizontally(
+                    targetOffsetX = { (it * 0.25f).toInt() },
+                    animationSpec = tween(180, easing = FastOutSlowInEasing)
+                ) + fadeOut(animationSpec = tween(180, easing = FastOutSlowInEasing))
             }
         ) {
             com.vk.clockdin.ui.settings.SettingsScreen(
@@ -195,15 +206,21 @@ fun ClockdinNavHost(
             arguments = listOf(navArgument("entryId") { type = NavType.LongType }),
             enterTransition = {
                 slideInVertically(
-                    initialOffsetY = { (it * 0.16f).toInt() },
-                    animationSpec = tween(380, easing = FastOutSlowInEasing)
-                ) + fadeIn(animationSpec = tween(380, easing = FastOutSlowInEasing))
+                    initialOffsetY = { (it * 0.08f).toInt() },
+                    animationSpec = tween(240, easing = FastOutSlowInEasing)
+                ) + fadeIn(animationSpec = tween(240, easing = FastOutSlowInEasing))
             },
             exitTransition = {
+                fadeOut(animationSpec = tween(180, easing = FastOutSlowInEasing))
+            },
+            popEnterTransition = {
+                fadeIn(animationSpec = tween(200, easing = FastOutSlowInEasing))
+            },
+            popExitTransition = {
                 slideOutVertically(
-                    targetOffsetY = { (it * 0.16f).toInt() },
-                    animationSpec = tween(320, easing = FastOutSlowInEasing)
-                ) + fadeOut(animationSpec = tween(320, easing = FastOutSlowInEasing))
+                    targetOffsetY = { (it * 0.08f).toInt() },
+                    animationSpec = tween(180, easing = FastOutSlowInEasing)
+                ) + fadeOut(animationSpec = tween(180, easing = FastOutSlowInEasing))
             }
         ) {
             com.vk.clockdin.ui.detail.EntryDetailScreen(

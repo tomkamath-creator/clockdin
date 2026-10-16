@@ -3,6 +3,7 @@ package com.vk.clockdin.ui.galaxy
 
 import android.graphics.BitmapFactory
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.exponentialDecay
 import androidx.compose.animation.core.tween
@@ -32,9 +33,11 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.util.VelocityTracker
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
@@ -99,10 +102,12 @@ fun GalaxyHomeScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
-            // Fullscreen 3D Galaxy Canvas with Tap-to-Zoom Camera Flight
+            // Fullscreen 3D Galaxy Canvas with continuous cosmic orbit and direct orb flight
             GalaxyCanvas(
                 entries = uiState.entries,
                 onBeadTap = { entryId -> viewModel.onBeadTapped(entryId) },
+                newlySavedOrb = newlySavedOrb,
+                onSaveAnimationComplete = onSaveAnimationComplete,
                 modifier = Modifier.fillMaxSize()
             )
 
@@ -142,15 +147,6 @@ fun GalaxyHomeScreen(
                     .align(Alignment.BottomEnd)
                     .padding(end = 24.dp, bottom = 28.dp)
             )
-
-            // Seamless flight animation for newly saved orb landing into galaxy
-            newlySavedOrb?.let { (orbPath, colors) ->
-                com.vk.clockdin.ui.save.SaveTrajectoryAnimation(
-                    orbImagePath = orbPath,
-                    dominantColors = colors,
-                    onAnimationComplete = onSaveAnimationComplete
-                )
-            }
         }
     }
 }
@@ -159,24 +155,50 @@ fun GalaxyHomeScreen(
 fun GalaxyCanvas(
     entries: List<MoodEntry>,
     onBeadTap: (Long) -> Unit,
+    newlySavedOrb: Pair<String, List<GradientStop>>? = null,
+    onSaveAnimationComplete: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val engine = remember { GalaxyParticleEngine() }
     val coroutineScope = rememberCoroutineScope()
+    val density = LocalDensity.current
 
     // Camera dynamic state
     var yaw by remember { mutableFloatStateOf(0.4f) }
     var pitch by remember { mutableFloatStateOf(0.15f) }
     var zoom by remember { mutableFloatStateOf(1.0f) }
-    var isUserInteracting by remember { mutableStateOf(false) }
     var isCameraFlying by remember { mutableStateOf(false) }
 
     // Velocity tracker and inertia animation
     val velocityTracker = remember { VelocityTracker() }
     val inertiaAnim = remember { Animatable(0f) }
 
+    // In-flight save trajectory state
+    val flightProgress = remember { Animatable(1f) }
+    var activeSavedOrb by remember { mutableStateOf<Pair<String, List<GradientStop>>?>(null) }
+    var flightBitmap by remember { mutableStateOf<androidx.compose.ui.graphics.ImageBitmap?>(null) }
+
+    LaunchedEffect(newlySavedOrb) {
+        if (newlySavedOrb != null) {
+            activeSavedOrb = newlySavedOrb
+            flightBitmap = withContext(Dispatchers.IO) {
+                val file = File(newlySavedOrb.first)
+                if (file.exists()) BitmapFactory.decodeFile(file.absolutePath)?.asImageBitmap() else null
+            }
+            flightProgress.snapTo(0f)
+            flightProgress.animateTo(
+                targetValue = 1f,
+                animationSpec = tween(850, easing = CubicBezierEasing(0.20f, 0.85f, 0.30f, 1.0f))
+            )
+            onSaveAnimationComplete()
+            activeSavedOrb = null
+        }
+    }
+
     // Frame clock driven by withFrameNanos (zero allocations)
     var frameTimeNanos by remember { mutableLongStateOf(0L) }
+    var lastInteractionTime by remember { mutableLongStateOf(0L) }
+    var lastNanos by remember { mutableLongStateOf(0L) }
 
     // Update entries in engine and load rendered PNG orbs asynchronously
     LaunchedEffect(entries) {
@@ -195,14 +217,24 @@ fun GalaxyCanvas(
         }
     }
 
-    // Continuous 60/120fps animation clock
+    // Continuous 60/120fps animation clock with fluid celestial auto-rotation
     LaunchedEffect(Unit) {
         while (isActive) {
             withFrameNanos { nanos ->
                 frameTimeNanos = nanos
-                // Gentle celestial auto-rotation when idle (smooth continuous angle without modulo snapping)
-                if (!isUserInteracting && !inertiaAnim.isRunning && !isCameraFlying) {
-                    yaw += 0.0006f
+                val dt = if (lastNanos == 0L) 0.016f else ((nanos - lastNanos) / 1_000_000_000f).coerceIn(0.001f, 0.05f)
+                lastNanos = nanos
+
+                val now = System.currentTimeMillis()
+                val isIdle = (now - lastInteractionTime) > 600L && !isCameraFlying && !inertiaAnim.isRunning
+                if (isIdle) {
+                    // Constant, majestic 3D celestial auto-rotation (~12.6 degrees per second)
+                    yaw += 0.22f * dt
+
+                    // Gentle return to standard zoom 1.0f if left zoomed in
+                    if (kotlin.math.abs(zoom - 1.0f) > 0.02f) {
+                        zoom += (1.0f - zoom) * 2.5f * dt
+                    }
                 }
             }
         }
@@ -220,7 +252,7 @@ fun GalaxyCanvas(
                         if (bead != null) {
                             coroutineScope.launch {
                                 isCameraFlying = true
-                                isUserInteracting = true
+                                lastInteractionTime = System.currentTimeMillis()
 
                                 // Calculate spherical angles to fly and center camera right on this orb
                                 val targetYaw = -kotlin.math.atan2(bead.worldPos.x, bead.worldPos.z)
@@ -234,33 +266,32 @@ fun GalaxyCanvas(
 
                                 val hypXZ = kotlin.math.sqrt(bead.worldPos.x * bead.worldPos.x + bead.worldPos.z * bead.worldPos.z)
                                 val targetPitch = kotlin.math.atan2(bead.worldPos.y, hypXZ).coerceIn(-1.25f, 1.25f)
-                                val targetZoom = 2.2f
+                                val targetZoom = 2.0f
 
                                 val animYaw = Animatable(yaw)
                                 val animPitch = Animatable(pitch)
                                 val animZoom = Animatable(zoom)
 
                                 val j1 = launch {
-                                    animYaw.animateTo(flyYaw, tween(420, easing = FastOutSlowInEasing)) {
+                                    animYaw.animateTo(flyYaw, tween(360, easing = FastOutSlowInEasing)) {
                                         yaw = value
                                     }
                                 }
                                 val j2 = launch {
-                                    animPitch.animateTo(targetPitch, tween(420, easing = FastOutSlowInEasing)) {
+                                    animPitch.animateTo(targetPitch, tween(360, easing = FastOutSlowInEasing)) {
                                         pitch = value
                                     }
                                 }
                                 val j3 = launch {
-                                    animZoom.animateTo(targetZoom, tween(420, easing = FastOutSlowInEasing)) {
+                                    animZoom.animateTo(targetZoom, tween(360, easing = FastOutSlowInEasing)) {
                                         zoom = value
                                     }
                                 }
 
                                 joinAll(j1, j2, j3)
                                 onBeadTap(tappedEntry.id)
-                                delay(450L)
+                                delay(300L)
                                 isCameraFlying = false
-                                isUserInteracting = false
                             }
                         } else {
                             onBeadTap(tappedEntry.id)
@@ -272,7 +303,7 @@ fun GalaxyCanvas(
                 detectTransformGestures(
                     onGesture = { centroid, pan, zoomFactor, _ ->
                         if (isCameraFlying) return@detectTransformGestures
-                        isUserInteracting = true
+                        lastInteractionTime = System.currentTimeMillis()
                         yaw += pan.x * 0.004f
                         pitch = (pitch - pan.y * 0.004f).coerceIn(-1.396f, 1.396f) // Clamped +/- 80 deg
                         zoom = (zoom * zoomFactor).coerceIn(0.5f, 3.0f)
@@ -295,7 +326,6 @@ fun GalaxyCanvas(
                                     yaw = value
                                 }
                             }
-                            isUserInteracting = false
                         }
                     }
                 )
@@ -364,6 +394,11 @@ fun GalaxyCanvas(
             )
         }
 
+        val inFlightOrb = activeSavedOrb
+        val targetBead = inFlightOrb?.let { orb ->
+            engine.beads.firstOrNull { it.entry.orbImagePath == orb.first } ?: engine.beads.lastOrNull()
+        }
+
         // 4. Draw beads (capped to nearest 400 for full glow, rest as simple dots)
         val beadCount = sortedBeads.size
         val fullGlowThreshold = (beadCount - 400).coerceAtLeast(0)
@@ -371,6 +406,11 @@ fun GalaxyCanvas(
         for (i in 0 until beadCount) {
             val bead = sortedBeads[i]
             if (!bead.isVisible) continue
+
+            // If this bead is actively in-flight arriving from the paint canvas, suppress static drawing
+            if (inFlightOrb != null && bead == targetBead && flightProgress.value < 0.98f) {
+                continue
+            }
 
             val centerOffset = Offset(bead.screenX, bead.screenY)
 
@@ -429,5 +469,91 @@ fun GalaxyCanvas(
                 )
             }
         }
+
+        // 5. Draw in-flight newly saved orb gliding from paint canvas center directly into targetBead position
+        if (inFlightOrb != null && targetBead != null) {
+            val t = flightProgress.value
+            val p0 = Offset(centerX, centerY * 0.82f)
+            val p3 = Offset(targetBead.screenX, targetBead.screenY)
+            val p1 = Offset(p0.x + (p3.x - p0.x) * 0.25f - 25f, p0.y + (p3.y - p0.y) * 0.1f - 35f)
+            val p2 = Offset(p0.x + (p3.x - p0.x) * 0.75f, p3.y - 25f)
+            val currentPos = computeCubicBezier(p0, p1, p2, p3, t)
+
+            val startRadius = with(density) { 95.dp.toPx() }
+            val endRadius = targetBead.visualRadius
+            val currentRadius = startRadius + (endRadius - startRadius) * t
+
+            val primaryColor = inFlightOrb.second.firstOrNull()?.let { parseDominantHex(it.hex) } ?: targetBead.dominantColor
+
+            // Glowing halo wake
+            drawCircle(
+                brush = Brush.radialGradient(
+                    colors = listOf(
+                        primaryColor.copy(alpha = 0.55f * (1f - t * 0.25f)),
+                        Color.Transparent
+                    ),
+                    center = currentPos,
+                    radius = currentRadius * 1.8f
+                ),
+                radius = currentRadius * 1.8f,
+                center = currentPos
+            )
+
+            // Render in-flight orb image
+            val bmp = flightBitmap ?: targetBead.cachedBitmap
+            if (bmp != null) {
+                val diameter = (currentRadius * 2f).toInt().coerceAtLeast(2)
+                drawImage(
+                    image = bmp,
+                    dstOffset = IntOffset(
+                        (currentPos.x - currentRadius).toInt(),
+                        (currentPos.y - currentRadius).toInt()
+                    ),
+                    dstSize = IntSize(diameter, diameter),
+                    alpha = 1f
+                )
+            } else {
+                drawCircle(
+                    color = primaryColor,
+                    radius = currentRadius,
+                    center = currentPos
+                )
+            }
+
+            // Landing shockwave ring when t approaches 1f
+            if (t > 0.75f) {
+                val burstT = ((t - 0.75f) / 0.25f).coerceIn(0f, 1f)
+                val burstRadius = currentRadius + burstT * with(density) { 45.dp.toPx() }
+                val burstAlpha = (1f - burstT) * 0.85f
+                drawCircle(
+                    color = primaryColor.copy(alpha = burstAlpha),
+                    radius = burstRadius,
+                    center = p3,
+                    style = Stroke(width = with(density) { 2.5.dp.toPx() } * (1f - burstT))
+                )
+            }
+        }
+    }
+}
+
+private fun computeCubicBezier(p0: Offset, p1: Offset, p2: Offset, p3: Offset, t: Float): Offset {
+    val u = 1f - t
+    val tt = t * t
+    val uu = u * u
+    val uuu = uu * u
+    val ttt = tt * t
+
+    val x = uuu * p0.x + 3f * uu * t * p1.x + 3f * u * tt * p2.x + ttt * p3.x
+    val y = uuu * p0.y + 3f * uu * t * p1.y + 3f * u * tt * p2.y + ttt * p3.y
+    return Offset(x, y)
+}
+
+private fun parseDominantHex(hex: String): Color {
+    return try {
+        val clean = hex.removePrefix("#")
+        val l = clean.toLong(16)
+        if (clean.length == 6) Color(l or 0xFF000000) else Color(l)
+    } catch (_: Exception) {
+        Color(0xFFFFC83D)
     }
 }

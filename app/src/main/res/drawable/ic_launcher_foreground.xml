@@ -81,7 +81,9 @@
             android:strokeLineCap="round" />
         <!-- Sharp luminous front ring core -->
         <path
-            android:pathData="M90,54 A36,11 0 0,1 18,54">
+            android:pathData="M90,54 A36,11 0 0,1 18,54"
+            android:strokeWidth="1.8"
+            android:strokeLineCap="round">
             <aapt:attr name="android:strokeColor">
                 <gradient
                     android:startX="18"
@@ -93,16 +95,6 @@
                     <item android:offset="0.3" android:color="#FFFFFFFF" />
                     <item android:offset="0.7" android:color="#FF00E5FF" />
                     <item android:offset="1.0" android:color="#80B388FF" />
-                </gradient>
-            </aapt:attr>
-            <aapt:attr name="android:fillColor">
-                <gradient
-                    android:startX="0"
-                    android:startY="0"
-                    android:endX="0"
-                    android:endY="0"
-                    android:type="linear">
-                    <item android:offset="0.0" android:color="#00000000" />
                 </gradient>
             </aapt:attr>
         </path>

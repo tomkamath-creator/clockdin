@@ -46,7 +46,6 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.vk.clockdin.domain.model.GradientStop
 import com.vk.clockdin.ui.save.SaveEntryBottomSheet
-import com.vk.clockdin.ui.save.SaveTrajectoryAnimation
 import com.vk.clockdin.ui.theme.ClockdinMotion
 import com.vk.clockdin.ui.theme.GlassBorderHairline
 import com.vk.clockdin.ui.theme.GlassSurfaceLow
