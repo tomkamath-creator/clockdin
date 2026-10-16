@@ -20,5 +20,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "clockdin"
+rootProject.name = "Starscript"
 include(":app")

@@ -78,11 +78,7 @@ class PaintViewModel @Inject constructor(
     fun setActiveColor(color: MoodColor) {
         _uiState.update { state ->
             val updatedSelected = if (!state.selectedColors.contains(color)) {
-                if (state.selectedColors.size < 5) {
-                    state.selectedColors + color
-                } else {
-                    state.selectedColors
-                }
+                state.selectedColors + color
             } else {
                 state.selectedColors
             }
@@ -97,25 +93,21 @@ class PaintViewModel @Inject constructor(
     fun toggleMoodColor(color: MoodColor) {
         val current = _uiState.value.selectedColors
         if (current.contains(color)) {
-            if (current.size <= 2) {
-                // Minimum 2 colors required
-                triggerShake("An orb requires at least 2 mood colors")
+            if (current.size <= 1) {
+                // Minimum 1 color required
+                triggerShake("Select at least 1 mood color")
                 return
             }
             val updated = current - color
             _uiState.update {
                 it.copy(
                     selectedColors = updated,
-                    activeColor = if (it.activeColor == color) updated.firstOrNull() else it.activeColor,
+                    activeColor = if (it.activeColor == color) updated.firstOrNull() ?: it.activeColor else it.activeColor,
                     hasUnsavedChanges = true
                 )
             }
         } else {
-            if (current.size >= 5) {
-                // Maximum 5 colors allowed
-                triggerShake("Select a maximum of 5 mood colors")
-                return
-            }
+            // Unlimited colors allowed: no cap and no error shake!
             val updated = current + color
             _uiState.update {
                 it.copy(
@@ -166,8 +158,8 @@ class PaintViewModel @Inject constructor(
 
     fun onNextClicked(canvasSizePx: Float) {
         val state = _uiState.value
-        if (state.selectedColors.size < 2) {
-            triggerShake("Select at least 2 mood colors")
+        if (state.selectedColors.isEmpty()) {
+            triggerShake("Select at least 1 mood color")
             return
         }
 

@@ -171,7 +171,8 @@ object OrbRasterizer {
     }
 
     /**
-     * Extracts 2-5 dominant gradient stops from the painted strokes and fallback colors.
+     * Extracts all distinct dominant gradient stops from the painted strokes and selected colors.
+     * Supports unlimited colors chosen by the user (at least 1).
      */
     fun extractDominantStops(
         strokes: List<PaintStroke>,
@@ -190,28 +191,23 @@ object OrbRasterizer {
             if (!hexStops.contains(hex)) {
                 hexStops.add(hex)
             }
-            if (hexStops.size >= 5) break
         }
 
-        // If fewer than 2 colors in strokes, augment with selected mood colors
-        if (hexStops.size < 2) {
-            for (fallback in fallbackColors) {
-                val hex = fallback.hex.uppercase()
-                if (!hexStops.contains(hex)) {
-                    hexStops.add(hex)
-                }
-                if (hexStops.size >= 2) break
+        // Augment with all selected mood colors so all picked colors are preserved
+        for (fallback in fallbackColors) {
+            val hex = fallback.hex.uppercase()
+            if (!hexStops.contains(hex)) {
+                hexStops.add(hex)
             }
         }
 
-        // Fallback default if still under 2
-        if (hexStops.size < 2) {
-            if (!hexStops.contains("#FFC83D")) hexStops.add("#FFC83D")
-            if (!hexStops.contains("#2FD4A7")) hexStops.add("#2FD4A7")
+        // Fallback default if completely empty
+        if (hexStops.isEmpty()) {
+            hexStops.add("#FFC83D")
         }
 
-        val total = hexStops.size.coerceIn(2, 5)
-        return hexStops.take(total).mapIndexed { index, hex ->
+        val total = hexStops.size
+        return hexStops.mapIndexed { index, hex ->
             val pos = if (total > 1) index.toFloat() / (total - 1) else 0f
             val matchingLabel = fallbackColors.firstOrNull { it.hex.equals(hex, ignoreCase = true) }?.name
             GradientStop(hex = hex, position = pos, label = matchingLabel)

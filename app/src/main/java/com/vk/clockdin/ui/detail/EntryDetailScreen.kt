@@ -6,13 +6,13 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -21,7 +21,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -57,7 +58,7 @@ import com.vk.clockdin.ui.theme.GlassBorderHairline
 import com.vk.clockdin.ui.theme.GlassSurfaceLow
 import com.vk.clockdin.ui.theme.GlassSurfaceMedium
 import com.vk.clockdin.ui.theme.GlassSurfaceUltraLow
-import com.vk.clockdin.ui.theme.MoodAngry
+import com.vk.clockdin.ui.theme.TextDisabled
 import com.vk.clockdin.ui.theme.TextPrimary
 import com.vk.clockdin.ui.theme.TextSecondary
 import com.vk.clockdin.ui.theme.TextTertiary
@@ -68,10 +69,16 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
+/**
+ * Floating futuristic space card detail view arranged in three vertical sections:
+ * 1. Top: Small badge painted orb glowing brightly with its authentic mood colors.
+ * 2. Middle: Clean photo carousel showing all attached pictures (tap to open full-screen).
+ * 3. Bottom: Frosted glass journal section with date, mood tags, and written reflection.
+ */
 @Composable
 fun EntryDetailScreen(
     onBack: () -> Unit,
-    onOpenPhoto: (String) -> Unit,
+    onOpenPhoto: (List<String>, Int) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: EntryDetailViewModel = hiltViewModel()
 ) {
@@ -97,7 +104,10 @@ fun EntryDetailScreen(
             }
             is EntryDetailUiState.NotFound -> {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
                         Text("Mood Orb Not Found", color = TextSecondary, fontSize = 16.sp)
                         Box(
                             modifier = Modifier
@@ -125,13 +135,15 @@ fun EntryDetailScreen(
                     entry.gradientStops.firstOrNull()?.let { parseColor(it.hex) } ?: Color(0xFFFFC83D)
                 }
 
+                val photos = remember(entry.photoPath) { entry.photoPaths.filter { it.isNotBlank() } }
+
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
                         .verticalScroll(rememberScrollState()),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    // 1. Top Bar
+                    // Navigation Top Bar
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -159,12 +171,12 @@ fun EntryDetailScreen(
                             )
                         }
 
-                        // Date Header
                         Text(
-                            text = formattedDate,
-                            color = TextPrimary,
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.SemiBold
+                            text = "STAR ARCHIVE",
+                            color = TextSecondary,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 2.sp
                         )
 
                         // Delete Button
@@ -188,216 +200,19 @@ fun EntryDetailScreen(
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    // 2. Hero Orb with Ambient Glow
-                    Box(
-                        modifier = Modifier
-                            .size(240.dp)
-                            .padding(16.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Canvas(modifier = Modifier.fillMaxSize()) {
-                            val center = Offset(size.width / 2f, size.height / 2f)
-                            val glowRadius = size.width / 2f * 1.35f
-                            drawCircle(
-                                brush = Brush.radialGradient(
-                                    colors = listOf(
-                                        primaryColor.copy(alpha = 0.50f),
-                                        primaryColor.copy(alpha = 0.15f),
-                                        Color.Transparent
-                                    ),
-                                    center = center,
-                                    radius = glowRadius
-                                ),
-                                radius = glowRadius,
-                                center = center
-                            )
-                        }
-
-                        // Orb image
-                        Box(
-                            modifier = Modifier
-                                .size(190.dp)
-                                .clip(CircleShape)
-                                .border(1.5.dp, GlassBorderHairline, CircleShape)
-                                .background(Color(0xFF07080E)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            AsyncImage(
-                                model = File(entry.orbImagePath),
-                                contentDescription = "Mood Orb",
-                                modifier = Modifier.fillMaxSize(),
-                                contentScale = ContentScale.Crop
-                            )
-                        }
-                    }
-
-                    // 3. Dominant Mood Tags
-                    Row(
-                        modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        entry.gradientStops.forEach { stop ->
-                            val c = parseColor(stop.hex)
-                            Row(
-                                modifier = Modifier
-                                    .glassCard(shape = RoundedCornerShape(14.dp), fillColor = GlassSurfaceLow)
-                                    .border(1.dp, c.copy(alpha = 0.5f), RoundedCornerShape(14.dp))
-                                    .padding(horizontal = 10.dp, vertical = 4.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(6.dp)
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(8.dp)
-                                        .clip(CircleShape)
-                                        .background(c)
-                                )
-                                Text(
-                                    text = stop.label ?: stop.hex,
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = TextPrimary
-                                )
-                            }
-                        }
-                    }
-
                     Spacer(modifier = Modifier.height(10.dp))
 
-                    // 5. Journal Note (if present)
-                    if (!entry.note.isNullOrBlank()) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 24.dp)
-                                .glassCard(shape = RoundedCornerShape(20.dp), fillColor = GlassSurfaceLow)
-                                .padding(18.dp)
-                        ) {
-                            Text(
-                                text = entry.note,
-                                fontSize = 15.sp,
-                                color = TextPrimary,
-                                lineHeight = 22.sp
-                            )
-                        }
-                    }
-
-                    // 6. Attached Photo Memories (if present)
-                    val photos = remember(entry.photoPath) { entry.photoPaths }
-                    if (photos.isNotEmpty()) {
-                        Spacer(modifier = Modifier.height(14.dp))
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 24.dp),
-                            verticalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
-                            Text(
-                                text = if (photos.size == 1) "Photo Memory" else "Photo Memories (${photos.size})",
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = TextSecondary
-                            )
-
-                            if (photos.size == 1) {
-                                val photoFile = File(photos.first())
-                                if (photoFile.exists()) {
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .clip(RoundedCornerShape(22.dp))
-                                            .border(1.dp, GlassBorderHairline, RoundedCornerShape(22.dp))
-                                            .clickable { onOpenPhoto(photos.first()) }
-                                    ) {
-                                        AsyncImage(
-                                            model = photoFile,
-                                            contentDescription = "Photo Memory",
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .height(220.dp),
-                                            contentScale = ContentScale.Crop
-                                        )
-
-                                        // Tap to expand hint
-                                        Box(
-                                            modifier = Modifier
-                                                .align(Alignment.BottomEnd)
-                                                .padding(12.dp)
-                                                .glassCard(shape = RoundedCornerShape(12.dp), fillColor = Color.Black.copy(alpha = 0.60f))
-                                                .padding(horizontal = 8.dp, vertical = 4.dp)
-                                        ) {
-                                            Row(
-                                                verticalAlignment = Alignment.CenterVertically,
-                                                horizontalArrangement = Arrangement.spacedBy(4.dp)
-                                            ) {
-                                                Icon(
-                                                    imageVector = Icons.Default.ZoomIn,
-                                                    contentDescription = null,
-                                                    tint = TextPrimary,
-                                                    modifier = Modifier.size(14.dp)
-                                                )
-                                                Text("Tap to enlarge", color = TextPrimary, fontSize = 11.sp)
-                                            }
-                                        }
-                                    }
-                                }
-                            } else {
-                                // Horizontal scrollable row of photos
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .horizontalScroll(rememberScrollState()),
-                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                                ) {
-                                    photos.forEachIndexed { index, path ->
-                                        val file = File(path)
-                                        if (file.exists()) {
-                                            Box(
-                                                modifier = Modifier
-                                                    .width(170.dp)
-                                                    .height(170.dp)
-                                                    .clip(RoundedCornerShape(18.dp))
-                                                    .border(1.dp, GlassBorderHairline, RoundedCornerShape(18.dp))
-                                                    .clickable { onOpenPhoto(path) }
-                                            ) {
-                                                AsyncImage(
-                                                    model = file,
-                                                    contentDescription = "Photo Memory $index",
-                                                    modifier = Modifier.fillMaxSize(),
-                                                    contentScale = ContentScale.Crop
-                                                )
-
-                                                // Tap to expand hint
-                                                Box(
-                                                    modifier = Modifier
-                                                        .align(Alignment.BottomEnd)
-                                                        .padding(8.dp)
-                                                        .glassCard(shape = RoundedCornerShape(10.dp), fillColor = Color.Black.copy(alpha = 0.60f))
-                                                        .padding(horizontal = 6.dp, vertical = 3.dp)
-                                                ) {
-                                                    Row(
-                                                        verticalAlignment = Alignment.CenterVertically,
-                                                        horizontalArrangement = Arrangement.spacedBy(3.dp)
-                                                    ) {
-                                                        Icon(
-                                                            imageVector = Icons.Default.ZoomIn,
-                                                            contentDescription = null,
-                                                            tint = TextPrimary,
-                                                            modifier = Modifier.size(12.dp)
-                                                        )
-                                                        Text("View", color = TextPrimary, fontSize = 10.sp)
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
+                    // Floating Futuristic Space Card
+                    FuturisticSpaceCard(
+                        entry = entry,
+                        formattedDate = formattedDate,
+                        primaryColor = primaryColor,
+                        photos = photos,
+                        onOpenPhoto = onOpenPhoto,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 20.dp)
+                    )
 
                     Spacer(modifier = Modifier.height(32.dp))
                 }
@@ -411,6 +226,261 @@ fun EntryDetailScreen(
                             viewModel.deleteEntry(onDeleted = onBack)
                         }
                     )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Futuristic Space Card composed of three vertical sections:
+ * Top: Glowing badge orb
+ * Middle: Photo carousel
+ * Bottom: Frosted glass journal section
+ */
+@Composable
+private fun FuturisticSpaceCard(
+    entry: MoodEntry,
+    formattedDate: String,
+    primaryColor: Color,
+    photos: List<String>,
+    onOpenPhoto: (List<String>, Int) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .glassCard(shape = RoundedCornerShape(32.dp), fillColor = GlassSurfaceMedium)
+            .border(
+                width = 1.dp,
+                brush = Brush.verticalGradient(
+                    listOf(
+                        primaryColor.copy(alpha = 0.50f),
+                        Color.White.copy(alpha = 0.15f),
+                        Color.Transparent
+                    )
+                ),
+                shape = RoundedCornerShape(32.dp)
+            )
+            .padding(20.dp)
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(18.dp)
+        ) {
+            // ==========================================
+            // TOP SECTION: Small Glowing Badge Painted Orb
+            // ==========================================
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 4.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                // Multi-layered authentic mood glow aura
+                Canvas(modifier = Modifier.size(130.dp)) {
+                    val center = Offset(size.width / 2f, size.height / 2f)
+                    val glowRadius = size.width / 2f
+                    drawCircle(
+                        brush = Brush.radialGradient(
+                            colors = listOf(
+                                primaryColor.copy(alpha = 0.65f),
+                                primaryColor.copy(alpha = 0.25f),
+                                Color.Transparent
+                            ),
+                            center = center,
+                            radius = glowRadius
+                        ),
+                        radius = glowRadius,
+                        center = center
+                    )
+                }
+
+                // Small badge painted orb
+                Box(
+                    modifier = Modifier
+                        .size(80.dp)
+                        .clip(CircleShape)
+                        .border(1.5.dp, Color.White.copy(alpha = 0.85f), CircleShape)
+                        .background(Color(0xFF07080E)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    AsyncImage(
+                        model = File(entry.orbImagePath),
+                        contentDescription = "Painted Mood Orb Badge",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                }
+            }
+
+            // ==========================================
+            // MIDDLE SECTION: Clean Photo Carousel
+            // ==========================================
+            if (photos.isNotEmpty()) {
+                val pagerState = rememberPagerState(pageCount = { photos.size })
+
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    HorizontalPager(
+                        state = pagerState,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(210.dp)
+                    ) { page ->
+                        val file = File(photos[page])
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .clip(RoundedCornerShape(22.dp))
+                                .border(1.dp, GlassBorderHairline, RoundedCornerShape(22.dp))
+                                .clickable { onOpenPhoto(photos, page) }
+                        ) {
+                            AsyncImage(
+                                model = file,
+                                contentDescription = "Attached memory photo $page",
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
+                            )
+
+                            // Tap to enlarge hint badge
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.BottomEnd)
+                                    .padding(10.dp)
+                                    .glassCard(shape = RoundedCornerShape(12.dp), fillColor = Color.Black.copy(alpha = 0.65f))
+                                    .padding(horizontal = 8.dp, vertical = 4.dp)
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.ZoomIn,
+                                        contentDescription = null,
+                                        tint = TextPrimary,
+                                        modifier = Modifier.size(13.dp)
+                                    )
+                                    Text("Full View", color = TextPrimary, fontSize = 11.sp)
+                                }
+                            }
+                        }
+                    }
+
+                    // Dot indicators if multiple photos
+                    if (photos.size > 1) {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(top = 2.dp)
+                        ) {
+                            photos.indices.forEach { index ->
+                                val isSelected = pagerState.currentPage == index
+                                Box(
+                                    modifier = Modifier
+                                        .size(if (isSelected) 8.dp else 6.dp)
+                                        .clip(CircleShape)
+                                        .background(if (isSelected) primaryColor else TextDisabled.copy(alpha = 0.5f))
+                                )
+                            }
+                        }
+                    }
+                }
+            } else {
+                // Subtle cosmic separator when no photos are attached
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Text(
+                        text = "✦  ·  ·  ·  ✦",
+                        color = primaryColor.copy(alpha = 0.45f),
+                        fontSize = 11.sp,
+                        letterSpacing = 3.sp
+                    )
+                }
+            }
+
+            // ==========================================
+            // BOTTOM SECTION: Frosted Glass Journal Section
+            // ==========================================
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .glassCard(shape = RoundedCornerShape(22.dp), fillColor = GlassSurfaceUltraLow)
+                    .border(1.dp, GlassBorderHairline, RoundedCornerShape(22.dp))
+                    .padding(16.dp)
+            ) {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    // Date Header
+                    Text(
+                        text = formattedDate,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = TextSecondary
+                    )
+
+                    // Authentic Mood Tags / Pills
+                    if (entry.gradientStops.isNotEmpty()) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .horizontalScroll(rememberScrollState()),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            entry.gradientStops.forEach { stop ->
+                                val c = parseColor(stop.hex)
+                                Row(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .background(c.copy(alpha = 0.16f))
+                                        .border(1.dp, c.copy(alpha = 0.50f), RoundedCornerShape(12.dp))
+                                        .padding(horizontal = 9.dp, vertical = 4.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(7.dp)
+                                            .clip(CircleShape)
+                                            .background(c)
+                                    )
+                                    Text(
+                                        text = stop.label ?: stop.hex,
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = TextPrimary
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    // Journal Note Reflection
+                    val noteText = entry.note
+                    if (!noteText.isNullOrBlank()) {
+                        Text(
+                            text = noteText,
+                            fontSize = 14.sp,
+                            color = TextPrimary,
+                            lineHeight = 21.sp
+                        )
+                    } else {
+                        Text(
+                            text = "A quiet day recorded in the stars.",
+                            fontSize = 13.sp,
+                            color = TextTertiary,
+                            fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
+                        )
+                    }
                 }
             }
         }
@@ -441,7 +511,7 @@ private fun DeleteConfirmationDialog(
                 )
 
                 Text(
-                    text = "This orb, reflection note, and attached photo will be permanently removed from your galaxy.",
+                    text = "This orb, reflection note, and attached photos will be permanently removed from your galaxy.",
                     fontSize = 14.sp,
                     color = TextSecondary,
                     lineHeight = 20.sp
@@ -463,7 +533,7 @@ private fun DeleteConfirmationDialog(
                         Text("Cancel", color = TextPrimary, fontWeight = FontWeight.Medium, fontSize = 14.sp)
                     }
 
-                    // Bold, vivid high-contrast Delete button
+                    // Bold, vivid high-contrast Crimson Delete button
                     Box(
                         modifier = Modifier
                             .weight(1f)

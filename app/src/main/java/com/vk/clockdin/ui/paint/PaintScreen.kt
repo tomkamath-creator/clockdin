@@ -72,15 +72,12 @@ fun PaintScreen(
     var showDiscardDialog by remember { mutableStateOf(false) }
     var measuredCanvasSize by remember { mutableFloatStateOf(512f) }
 
-    // Save bottom sheet and flight animation state
+    // Save bottom sheet state
     var saveSheetPayload by remember { mutableStateOf<Pair<String, List<GradientStop>>?>(null) }
-    var trajectoryPayload by remember { mutableStateOf<Pair<String, List<GradientStop>>?>(null) }
 
     // Intercept back gesture for unsaved changes confirmation
     BackHandler(enabled = true) {
-        if (trajectoryPayload != null) {
-            // Trajectory in flight, ignore back
-        } else if (saveSheetPayload != null) {
+        if (saveSheetPayload != null) {
             saveSheetPayload = null
         } else if (uiState.hasUnsavedChanges || uiState.strokes.isNotEmpty()) {
             showDiscardDialog = true
@@ -197,19 +194,8 @@ fun PaintScreen(
                 onDismiss = { saveSheetPayload = null },
                 onSaveSuccess = { savedEntry ->
                     saveSheetPayload = null
-                    trajectoryPayload = Pair(savedEntry.orbImagePath, savedEntry.gradientStops)
-                }
-            )
-        }
-
-        // 6. Cubic Bézier Flight Trajectory Animation
-        trajectoryPayload?.let { (orbPath, colors) ->
-            SaveTrajectoryAnimation(
-                orbImagePath = orbPath,
-                dominantColors = colors,
-                onAnimationComplete = {
-                    trajectoryPayload = null
-                    onProceedToSave(orbPath, colors)
+                    // Immediately transition to Galaxy screen for seamless in-flight placement
+                    onProceedToSave(savedEntry.orbImagePath, savedEntry.gradientStops)
                 }
             )
         }

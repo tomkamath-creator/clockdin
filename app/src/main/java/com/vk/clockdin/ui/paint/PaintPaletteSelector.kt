@@ -128,8 +128,8 @@ fun PaintPaletteSelector(
                     letterSpacing = 1.2.sp
                 )
 
-                // Selection Counter Pill
-                val countColor = if (selectedColors.size in 2..5) Color(0xFF2FD4A7) else Color(0xFFFFC83D)
+                // Selection Counter Pill (Unlimited, at least 1)
+                val countColor = if (selectedColors.isNotEmpty()) Color(0xFF2FD4A7) else Color(0xFFFFC83D)
                 Box(
                     modifier = Modifier
                         .glassCard(shape = RoundedCornerShape(12.dp), fillColor = GlassSurfaceUltraLow)
@@ -137,7 +137,7 @@ fun PaintPaletteSelector(
                         .padding(horizontal = 8.dp, vertical = 2.dp)
                 ) {
                     Text(
-                        text = "${selectedColors.size}/5 selected",
+                        text = "${selectedColors.size} selected",
                         color = countColor,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.SemiBold
@@ -158,6 +158,55 @@ fun PaintPaletteSelector(
                         fontSize = 11.sp,
                         fontWeight = FontWeight.SemiBold
                     )
+                }
+            }
+        }
+
+        // Dedicated expanding strip of all selected color dots/pills
+        if (selectedColors.isNotEmpty()) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState())
+                    .padding(horizontal = 20.dp, vertical = 3.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                selectedColors.forEach { moodColor ->
+                    val isCurrentActive = moodColor == activeColor
+                    val color = parseColor(moodColor.hex)
+                    Row(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(if (isCurrentActive) color.copy(alpha = 0.28f) else GlassSurfaceUltraLow)
+                            .border(
+                                width = if (isCurrentActive) 1.5.dp else 1.dp,
+                                color = if (isCurrentActive) color else color.copy(alpha = 0.5f),
+                                shape = RoundedCornerShape(14.dp)
+                            )
+                            .clickable(
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null,
+                                onClick = { onActiveColorSelect(moodColor) }
+                            )
+                            .padding(horizontal = 8.dp, vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(10.dp)
+                                .clip(CircleShape)
+                                .background(color)
+                                .border(1.dp, Color.White.copy(alpha = 0.8f), CircleShape)
+                        )
+                        Text(
+                            text = moodColor.name,
+                            fontSize = 11.sp,
+                            color = if (isCurrentActive) TextPrimary else TextSecondary,
+                            fontWeight = if (isCurrentActive) FontWeight.Bold else FontWeight.Medium
+                        )
+                    }
                 }
             }
         }

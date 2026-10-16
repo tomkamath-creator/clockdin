@@ -14,11 +14,12 @@ import kotlin.math.sqrt
 class FibonacciPlacementTest {
 
     @Test
-    fun `single entry places at origin`() {
-        val point = FibonacciSphere.calculatePosition(index = 0, totalCount = 1)
-        assertEquals(0f, point.x, 0.001f)
-        assertEquals(0f, point.y, 0.001f)
-        assertEquals(0f, point.z, 0.001f)
+    fun `single entry places on outer curved sphere not at origin`() {
+        val radius = 360f
+        val point = FibonacciSphere.calculatePosition(index = 0, totalCount = 1, sphereRadius = radius)
+        val dist = sqrt(point.x * point.x + point.y * point.y + point.z * point.z)
+        assertEquals(radius, dist, 0.5f)
+        assertTrue("Single first orb must not be frozen at origin", point.x != 0f || point.y != 0f || point.z != 0f)
     }
 
     @Test
@@ -31,15 +32,14 @@ class FibonacciPlacementTest {
     }
 
     @Test
-    fun `points expand from center outwards`() {
+    fun `all points float along outer curved sphere`() {
         val total = 50
-        val oldest = FibonacciSphere.calculatePosition(0, total)
-        val newest = FibonacciSphere.calculatePosition(total - 1, total)
-
-        val rOldest = sqrt(oldest.x * oldest.x + oldest.y * oldest.y + oldest.z * oldest.z)
-        val rNewest = sqrt(newest.x * newest.x + newest.y * newest.y + newest.z * newest.z)
-
-        assertTrue("Newest entry ($rNewest) > oldest entry ($rOldest)", rNewest > rOldest)
+        val radius = 360f
+        for (i in 0 until total) {
+            val point = FibonacciSphere.calculatePosition(i, total, sphereRadius = radius)
+            val dist = sqrt(point.x * point.x + point.y * point.y + point.z * point.z)
+            assertEquals("Point $i must float on outer sphere radius", radius, dist, 1.0f)
+        }
     }
 
     @Test

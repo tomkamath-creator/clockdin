@@ -1,4 +1,4 @@
-name: Build Clockdin APK
+name: Build Starscript APK
 
 on:
   push:
@@ -34,7 +34,7 @@ jobs:
       - name: Upload Debug APK
         uses: actions/upload-artifact@v4
         with:
-          name: clockdin-debug-apk
+          name: starscript-debug-apk
           path: app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
           retention-days: 7

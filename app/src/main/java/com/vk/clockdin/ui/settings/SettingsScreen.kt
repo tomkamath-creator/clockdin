@@ -339,7 +339,7 @@ fun SettingsScreen(
                             .height(44.dp)
                             .glassCard(shape = RoundedCornerShape(16.dp), fillColor = GlassSurfaceUltraLow)
                             .clickable(enabled = !uiState.isExporting) {
-                                exportLauncher.launch("clockdin_backup_${LocalDate.now()}.json")
+                                exportLauncher.launch("starscript_backup_${LocalDate.now()}.json")
                             }
                             .padding(horizontal = 14.dp),
                         contentAlignment = Alignment.CenterStart
@@ -423,7 +423,7 @@ fun SettingsScreen(
                     verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     Text(
-                        text = "clockdin",
+                        text = "Starscript",
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
                         color = TextPrimary

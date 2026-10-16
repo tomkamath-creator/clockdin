@@ -10,11 +10,12 @@ import kotlin.math.sqrt
 class FibonacciSphereTest {
 
     @Test
-    fun singleEntryPlacesAtOrigin() {
-        val point = FibonacciSphere.calculatePosition(index = 0, totalCount = 1)
-        assertEquals(0f, point.x, 0.001f)
-        assertEquals(0f, point.y, 0.001f)
-        assertEquals(0f, point.z, 0.001f)
+    fun singleEntryPlacesOnCurvedOuterSphereNotAtOrigin() {
+        val sphereRadius = 360f
+        val point = FibonacciSphere.calculatePosition(index = 0, totalCount = 1, sphereRadius = sphereRadius)
+        val dist = sqrt(point.x * point.x + point.y * point.y + point.z * point.z)
+        assertEquals(sphereRadius, dist, 0.5f)
+        assertTrue("Single orb must not be frozen at (0,0,0)", point.x != 0f || point.y != 0f || point.z != 0f)
     }
 
     @Test
@@ -44,30 +45,19 @@ class FibonacciSphereTest {
     }
 
     @Test
-    fun radialExpansionFromCenterOutward() {
+    fun allEntriesFloatOnOuterSphereRadius() {
         val totalCount = 100
-        val minRadius = 50f
-        val maxRadius = 500f
+        val sphereRadius = 380f
 
-        val oldest = FibonacciSphere.calculatePosition(
-            index = 0,
-            totalCount = totalCount,
-            maxRadius = maxRadius,
-            minRadius = minRadius
-        )
-        val newest = FibonacciSphere.calculatePosition(
-            index = totalCount - 1,
-            totalCount = totalCount,
-            maxRadius = maxRadius,
-            minRadius = minRadius
-        )
-
-        val distOldest = sqrt(oldest.x * oldest.x + oldest.y * oldest.y + oldest.z * oldest.z)
-        val distNewest = sqrt(newest.x * newest.x + newest.y * newest.y + newest.z * newest.z)
-
-        assertEquals("Oldest entry should be at minRadius", minRadius, distOldest, 1.0f)
-        assertEquals("Newest entry should be at maxRadius", maxRadius, distNewest, 1.0f)
-        assertTrue("Newest entry must be further from origin than oldest", distNewest > distOldest)
+        for (i in 0 until totalCount) {
+            val point = FibonacciSphere.calculatePosition(
+                index = i,
+                totalCount = totalCount,
+                sphereRadius = sphereRadius
+            )
+            val dist = sqrt(point.x * point.x + point.y * point.y + point.z * point.z)
+            assertEquals("Orb $i should be placed on outer sphere radius", sphereRadius, dist, 1.0f)
+        }
     }
 
     @Test

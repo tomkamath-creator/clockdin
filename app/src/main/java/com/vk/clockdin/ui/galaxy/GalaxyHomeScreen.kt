@@ -3,7 +3,9 @@ package com.vk.clockdin.ui.galaxy
 
 import android.graphics.BitmapFactory
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.exponentialDecay
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
@@ -39,10 +41,13 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.vk.clockdin.domain.model.GradientStop
 import com.vk.clockdin.domain.model.MoodEntry
 import com.vk.clockdin.ui.theme.spaceBackground
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -51,7 +56,7 @@ import java.io.File
  * Galaxy Home signature screen:
  * Full-screen 3D particle canvas with stars, atmospheric dust, and entry beads
  * positioned on a deterministic Fibonacci sphere with perspective projection,
- * AGSL glow halos, fling inertia, pinch zoom, and hit-testing.
+ * AGSL glow halos, fling inertia, tap-to-zoom flight animation, and hit-testing.
  */
 @Composable
 fun GalaxyHomeScreen(
@@ -59,6 +64,8 @@ fun GalaxyHomeScreen(
     onNavigateToSettings: () -> Unit,
     onNavigateToView: (String) -> Unit,
     onOpenDetail: (Long) -> Unit,
+    newlySavedOrb: Pair<String, List<GradientStop>>? = null,
+    onSaveAnimationComplete: () -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: GalaxyHomeViewModel = hiltViewModel()
 ) {
@@ -92,7 +99,7 @@ fun GalaxyHomeScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
-            // Fullscreen 3D Galaxy Canvas
+            // Fullscreen 3D Galaxy Canvas with Tap-to-Zoom Camera Flight
             GalaxyCanvas(
                 entries = uiState.entries,
                 onBeadTap = { entryId -> viewModel.onBeadTapped(entryId) },
@@ -135,6 +142,15 @@ fun GalaxyHomeScreen(
                     .align(Alignment.BottomEnd)
                     .padding(end = 24.dp, bottom = 28.dp)
             )
+
+            // Seamless flight animation for newly saved orb landing into galaxy
+            newlySavedOrb?.let { (orbPath, colors) ->
+                com.vk.clockdin.ui.save.SaveTrajectoryAnimation(
+                    orbImagePath = orbPath,
+                    dominantColors = colors,
+                    onAnimationComplete = onSaveAnimationComplete
+                )
+            }
         }
     }
 }
@@ -153,6 +169,7 @@ fun GalaxyCanvas(
     var pitch by remember { mutableFloatStateOf(0.15f) }
     var zoom by remember { mutableFloatStateOf(1.0f) }
     var isUserInteracting by remember { mutableStateOf(false) }
+    var isCameraFlying by remember { mutableStateOf(false) }
 
     // Velocity tracker and inertia animation
     val velocityTracker = remember { VelocityTracker() }
@@ -183,9 +200,9 @@ fun GalaxyCanvas(
         while (isActive) {
             withFrameNanos { nanos ->
                 frameTimeNanos = nanos
-                // Gentle celestial auto-rotation when idle
-                if (!isUserInteracting && !inertiaAnim.isRunning) {
-                    yaw = (yaw + 0.0006f) % (2f * Math.PI.toFloat())
+                // Gentle celestial auto-rotation when idle (smooth continuous angle without modulo snapping)
+                if (!isUserInteracting && !inertiaAnim.isRunning && !isCameraFlying) {
+                    yaw += 0.0006f
                 }
             }
         }
@@ -196,17 +213,67 @@ fun GalaxyCanvas(
             .fillMaxSize()
             .pointerInput(Unit) {
                 detectTapGestures { offset ->
+                    if (isCameraFlying) return@detectTapGestures
                     val tappedEntry = engine.hitTest(offset.x, offset.y, tolerancePx = 65f)
                     if (tappedEntry != null) {
-                        onBeadTap(tappedEntry.id)
+                        val bead = engine.beads.firstOrNull { it.entry.id == tappedEntry.id }
+                        if (bead != null) {
+                            coroutineScope.launch {
+                                isCameraFlying = true
+                                isUserInteracting = true
+
+                                // Calculate spherical angles to fly and center camera right on this orb
+                                val targetYaw = -kotlin.math.atan2(bead.worldPos.x, bead.worldPos.z)
+                                val diffYaw = (targetYaw - yaw) % (2f * Math.PI.toFloat())
+                                val normDiffYaw = when {
+                                    diffYaw > Math.PI.toFloat() -> diffYaw - (2f * Math.PI.toFloat())
+                                    diffYaw < -Math.PI.toFloat() -> diffYaw + (2f * Math.PI.toFloat())
+                                    else -> diffYaw
+                                }
+                                val flyYaw = yaw + normDiffYaw
+
+                                val hypXZ = kotlin.math.sqrt(bead.worldPos.x * bead.worldPos.x + bead.worldPos.z * bead.worldPos.z)
+                                val targetPitch = kotlin.math.atan2(bead.worldPos.y, hypXZ).coerceIn(-1.25f, 1.25f)
+                                val targetZoom = 2.2f
+
+                                val animYaw = Animatable(yaw)
+                                val animPitch = Animatable(pitch)
+                                val animZoom = Animatable(zoom)
+
+                                val j1 = launch {
+                                    animYaw.animateTo(flyYaw, tween(420, easing = FastOutSlowInEasing)) {
+                                        yaw = value
+                                    }
+                                }
+                                val j2 = launch {
+                                    animPitch.animateTo(targetPitch, tween(420, easing = FastOutSlowInEasing)) {
+                                        pitch = value
+                                    }
+                                }
+                                val j3 = launch {
+                                    animZoom.animateTo(targetZoom, tween(420, easing = FastOutSlowInEasing)) {
+                                        zoom = value
+                                    }
+                                }
+
+                                joinAll(j1, j2, j3)
+                                onBeadTap(tappedEntry.id)
+                                delay(450L)
+                                isCameraFlying = false
+                                isUserInteracting = false
+                            }
+                        } else {
+                            onBeadTap(tappedEntry.id)
+                        }
                     }
                 }
             }
             .pointerInput(Unit) {
                 detectTransformGestures(
                     onGesture = { centroid, pan, zoomFactor, _ ->
+                        if (isCameraFlying) return@detectTransformGestures
                         isUserInteracting = true
-                        yaw = (yaw + pan.x * 0.004f) % (2f * Math.PI.toFloat())
+                        yaw += pan.x * 0.004f
                         pitch = (pitch - pan.y * 0.004f).coerceIn(-1.396f, 1.396f) // Clamped +/- 80 deg
                         zoom = (zoom * zoomFactor).coerceIn(0.5f, 3.0f)
 
@@ -225,7 +292,7 @@ fun GalaxyCanvas(
                                     initialVelocity = vx * 0.0008f,
                                     animationSpec = exponentialDecay(frictionMultiplier = 1.2f)
                                 ) {
-                                    yaw = value % (2f * Math.PI.toFloat())
+                                    yaw = value
                                 }
                             }
                             isUserInteracting = false
@@ -259,7 +326,10 @@ fun GalaxyCanvas(
 
             drawCircle(
                 brush = Brush.radialGradient(
-                    colors = listOf(n.innerColor, n.outerColor),
+                    colors = listOf(
+                        n.innerColor.copy(alpha = n.innerColor.alpha * n.alpha),
+                        n.outerColor
+                    ),
                     center = Offset(n.screenX, n.screenY),
                     radius = n.radius
                 ),
@@ -281,20 +351,20 @@ fun GalaxyCanvas(
             )
         }
 
-        // 2. Draw atmospheric dust particles
+        // 3. Draw atmospheric dust particles
         val dust = engine.dust
         for (i in dust.indices) {
             val d = dust[i]
             if (!d.isVisible) continue
 
             drawCircle(
-                color = d.color,
+                color = d.color.copy(alpha = d.color.alpha * d.alpha),
                 radius = d.radius * d.scale,
                 center = Offset(d.screenX, d.screenY)
             )
         }
 
-        // 3. Draw beads (capped to nearest 400 for full glow, rest as simple dots)
+        // 4. Draw beads (capped to nearest 400 for full glow, rest as simple dots)
         val beadCount = sortedBeads.size
         val fullGlowThreshold = (beadCount - 400).coerceAtLeast(0)
 
@@ -338,8 +408,8 @@ fun GalaxyCanvas(
                     val orbBrush = Brush.radialGradient(
                         colors = listOf(
                             bead.dominantColor.copy(alpha = bead.alpha),
-                            bead.dominantColor.copy(alpha = bead.alpha * 0.75f),
-                            Color(0xEE12131A)
+                            bead.dominantColor.copy(alpha = bead.alpha * 0.4f),
+                            Color.Transparent
                         ),
                         center = centerOffset,
                         radius = bead.visualRadius
@@ -351,10 +421,10 @@ fun GalaxyCanvas(
                     )
                 }
             } else {
-                // Distant lightweight beads: simple glowing dot
+                // Distant compact star-bead
                 drawCircle(
-                    color = bead.dominantColor.copy(alpha = bead.alpha * 0.7f),
-                    radius = bead.visualRadius * 0.6f,
+                    color = bead.dominantColor.copy(alpha = bead.alpha),
+                    radius = bead.visualRadius,
                     center = centerOffset
                 )
             }

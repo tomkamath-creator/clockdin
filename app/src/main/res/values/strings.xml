@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">clockdin</string>
+    <string name="app_name">Starscript</string>
     <string name="wordmark_subtitle">by vk</string>
     <string name="reminder_channel_name">Daily Mood Check-in</string>
     <string name="reminder_channel_desc">Daily notification to capture your day\'s mood in the galaxy</string>

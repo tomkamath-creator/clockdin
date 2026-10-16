@@ -74,6 +74,7 @@ class NebulaCloud(
     var depth: Float = 0f
     var scale: Float = 1f
     var radius: Float = 300f
+    var alpha: Float = 1f
     var isVisible: Boolean = false
 }
 
@@ -264,10 +265,10 @@ class GalaxyParticleEngine(
     ): List<BeadRenderItem> {
         val timeSeconds = timeNanos / 1_000_000_000f
 
-        // 1. Update and project volumetric space clouds (nebulae) drifting across and through viewport
-        val spanX = 3000f
-        val spanY = 2400f
-        val spanZ = 1200f
+        // 1. Volumetric 3D cosmic space clouds (nebulae) drifting through screen
+        val spanX = 2600f
+        val spanY = 2200f
+        val spanZ = 1600f
 
         for (i in nebulae.indices) {
             val nebula = nebulae[i]
@@ -281,6 +282,11 @@ class GalaxyParticleEngine(
             val nz = (((rawNz + spanZ / 2f) % spanZ + spanZ) % spanZ) - spanZ / 2f
 
             val dynamicRadius = nebula.baseRadius * (1f + 0.16f * sin(timeSeconds * 0.35f + i * 1.2f))
+
+            // Smooth boundary fading so clouds fade in as they enter and fade out as they leave
+            val edgeFadeX = (1f - (kotlin.math.abs(nx) / (spanX * 0.48f))).coerceIn(0f, 1f)
+            val edgeFadeY = (1f - (kotlin.math.abs(ny) / (spanY * 0.48f))).coerceIn(0f, 1f)
+            nebula.alpha = edgeFadeX * edgeFadeY
 
             val projected = FibonacciSphere.project(
                 point = Point3D(nx, ny, nz),
@@ -299,7 +305,8 @@ class GalaxyParticleEngine(
             nebula.radius = dynamicRadius * projected.scale
 
             nebula.isVisible = projected.screenX in (-nebula.radius)..(viewportWidth + nebula.radius) &&
-                    projected.screenY in (-nebula.radius)..(viewportHeight + nebula.radius)
+                    projected.screenY in (-nebula.radius)..(viewportHeight + nebula.radius) &&
+                    nebula.alpha > 0.01f
         }
 
         // 2. Update and project background stars traveling forward (cosmic fly-through)
@@ -308,8 +315,10 @@ class GalaxyParticleEngine(
             val star = stars[i]
             val rawZ = star.initialZ - timeSeconds * star.warpSpeed
             val curZ = (((rawZ + 1400f) % starZSpan + starZSpan) % starZSpan) - 800f
-            val curX = star.initialX + sin(timeSeconds * 0.2f + star.twinklePhase) * 35f + star.driftVx * (timeSeconds % 60f)
-            val curY = star.initialY + cos(timeSeconds * 0.15f + star.twinklePhase) * 25f
+
+            // Continuous harmonic drift without periodic sawtooth jump
+            val curX = star.initialX + sin(timeSeconds * 0.14f + star.twinklePhase) * 40f + star.driftVx * 12f
+            val curY = star.initialY + cos(timeSeconds * 0.10f + star.twinklePhase) * 28f
 
             val projected = FibonacciSphere.project(
                 point = Point3D(curX, curY, curZ),
@@ -326,27 +335,41 @@ class GalaxyParticleEngine(
             star.depth = projected.depth
             star.scale = projected.scale
 
-            val twinkle = (0.4f + 0.6f * sin(timeSeconds * star.twinkleSpeed * 1000f + star.twinklePhase)).coerceIn(0.15f, 1f)
-            star.alpha = twinkle
+            // Smooth depth fading at wrap horizons: fades in far away, fades out near camera
+            val nearFade = ((curZ - (-800f)) / 300f).coerceIn(0f, 1f)
+            val farFade = ((1400f - curZ) / 350f).coerceIn(0f, 1f)
+            val depthAlpha = nearFade * farFade
+
+            // Fluid, gentle celestial shimmer
+            val twinkle = (0.35f + 0.65f * sin(timeSeconds * (1.2f + star.twinkleSpeed * 2.0f) + star.twinklePhase)).coerceIn(0.15f, 1f)
+            star.alpha = twinkle * depthAlpha
 
             star.isVisible = projected.screenX in -50f..(viewportWidth + 50f) &&
-                    projected.screenY in -50f..(viewportHeight + 50f)
+                    projected.screenY in -50f..(viewportHeight + 50f) &&
+                    star.alpha > 0.02f
         }
 
         // 3. Update and project dust particles drifting across screen
-        val dSpanX = 1800f
-        val dSpanY = 1600f
-        val dSpanZ = 1400f
+        val dSpanX = 2000f
+        val dSpanY = 1800f
+        val dSpanZ = 1600f
         for (i in 0 until dustCount) {
             val d = dust[i]
             val rawDx = d.initialX + timeSeconds * d.driftVx
-            val dx = (((rawDx + dSpanX / 2f) % dSpanX + dSpanX) % dSpanX) - dSpanX / 2f + sin(timeSeconds * 0.7f + d.driftPhaseX) * 25f
+            val dx = (((rawDx + dSpanX / 2f) % dSpanX + dSpanX) % dSpanX) - dSpanX / 2f + sin(timeSeconds * 0.4f + d.driftPhaseX) * 35f
 
             val rawDy = d.initialY + timeSeconds * d.driftVy
-            val dy = (((rawDy + dSpanY / 2f) % dSpanY + dSpanY) % dSpanY) - dSpanY / 2f + cos(timeSeconds * 0.6f + d.driftPhaseY) * 20f
+            val dy = (((rawDy + dSpanY / 2f) % dSpanY + dSpanY) % dSpanY) - dSpanY / 2f + cos(timeSeconds * 0.35f + d.driftPhaseY) * 30f
 
             val rawDz = d.initialZ + timeSeconds * d.driftVz
             val dz = (((rawDz + dSpanZ / 2f) % dSpanZ + dSpanZ) % dSpanZ) - dSpanZ / 2f
+
+            // Smooth edge and depth fade
+            val nearFade = ((dz - (-800f)) / 250f).coerceIn(0f, 1f)
+            val farFade = ((800f - dz) / 250f).coerceIn(0f, 1f)
+            val fadeX = (1f - (kotlin.math.abs(dx) / (dSpanX * 0.48f))).coerceIn(0f, 1f)
+            val fadeY = (1f - (kotlin.math.abs(dy) / (dSpanY * 0.48f))).coerceIn(0f, 1f)
+            d.alpha = (nearFade * farFade * fadeX * fadeY).coerceIn(0f, 1f) * 0.75f
 
             val projected = FibonacciSphere.project(
                 point = Point3D(dx, dy, dz),
@@ -364,7 +387,8 @@ class GalaxyParticleEngine(
             d.scale = projected.scale
 
             d.isVisible = projected.screenX in -50f..(viewportWidth + 50f) &&
-                    projected.screenY in -50f..(viewportHeight + 50f)
+                    projected.screenY in -50f..(viewportHeight + 50f) &&
+                    d.alpha > 0.02f
         }
 
         // 4. Project entry beads

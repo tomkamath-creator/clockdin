@@ -37,8 +37,9 @@ object FibonacciSphere {
     val GOLDEN_ANGLE: Double = Math.PI * (3.0 - sqrt(5.0))
 
     /**
-     * Calculates the 3D position of an orb bead placed on a deterministic Fibonacci spiral/sphere.
-     * Oldest entries (low index) are positioned centrally/innermost, expanding outward for newer entries.
+     * Calculates the 3D position of an orb bead placed on a deterministic Fibonacci sphere.
+     * All entries, including the first entry (index 0 / totalCount 1), float together along
+     * the outer curved sphere surface and rotate uniformly as one single galaxy.
      *
      * Spherical -> Cartesian mapping:
      * x = r * cos(lat) * cos(lon)
@@ -47,29 +48,30 @@ object FibonacciSphere {
      *
      * @param index 0-based index of the entry (0 = oldest).
      * @param totalCount Total count of entries in the galaxy.
-     * @param maxRadius Outer sphere radius in world units.
-     * @param minRadius Inner radius for the first entry.
+     * @param sphereRadius Outer curved sphere radius in world units (default 360f).
+     * @param minRadius Retained for compatibility; defaults to sphereRadius.
      */
     fun calculatePosition(
         index: Int,
         totalCount: Int,
-        maxRadius: Float = 420f,
-        minRadius: Float = 80f
+        sphereRadius: Float = 360f,
+        minRadius: Float = sphereRadius
     ): Point3D {
+        val effectiveRadius = sphereRadius
+
         if (totalCount <= 1) {
-            return Point3D(0f, 0f, 0f)
+            // Place single first orb on the outer sphere surface so it orbits with rotation
+            val lat = 0.12
+            val lon = 0.0
+            val x = (effectiveRadius * cos(lat) * cos(lon)).toFloat()
+            val y = (effectiveRadius * sin(lat)).toFloat()
+            val z = (effectiveRadius * cos(lat) * sin(lon)).toFloat()
+            return Point3D(x, y, z)
         }
 
-        // Fraction of progress from oldest to newest: 0.0 .. 1.0
-        val progress = (index.toDouble() / (totalCount - 1).toDouble()).coerceIn(0.0, 1.0)
-
-        // Radial expansion: oldest at center/minRadius -> newest outward toward maxRadius
-        val r = (minRadius + (maxRadius - minRadius) * sqrt(progress)).toFloat()
-
-        // Distribute latitude evenly from South to North poles: -PI/2 .. +PI/2
-        // yFraction spans from -1.0 to +1.0
+        // Distribute latitude evenly from South to North poles
         val yFraction = (2.0 * (index + 0.5) / totalCount) - 1.0
-        val clampedY = yFraction.coerceIn(-1.0, 1.0)
+        val clampedY = yFraction.coerceIn(-0.88, 0.88)
         val lat = asin(clampedY)
 
         // Longitude steps by the golden angle
@@ -80,9 +82,9 @@ object FibonacciSphere {
         val cosLon = cos(lon)
         val sinLon = sin(lon)
 
-        val x = (r * cosLat * cosLon).toFloat()
-        val y = (r * sinLat).toFloat()
-        val z = (r * cosLat * sinLon).toFloat()
+        val x = (effectiveRadius * cosLat * cosLon).toFloat()
+        val y = (effectiveRadius * sinLat).toFloat()
+        val z = (effectiveRadius * cosLat * sinLon).toFloat()
 
         return Point3D(x, y, z)
     }

@@ -12,12 +12,17 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
+import com.vk.clockdin.domain.model.GradientStop
 import com.vk.clockdin.ui.splash.IntroSplashScreen
 
 @Composable
@@ -25,6 +30,9 @@ fun ClockdinNavHost(
     navController: NavHostController,
     modifier: Modifier = Modifier
 ) {
+    // Flight trajectory payload for newly saved orb landing into 3D galaxy
+    var newlySavedOrb by remember { mutableStateOf<Pair<String, List<GradientStop>>?>(null) }
+
     NavHost(
         navController = navController,
         startDestination = Screen.Splash.route,
@@ -69,9 +77,11 @@ fun ClockdinNavHost(
 
         composable(
             route = Screen.Galaxy.route,
-            enterTransition = { fadeIn(animationSpec = tween(600)) }
+            enterTransition = { fadeIn(animationSpec = tween(500)) }
         ) {
             com.vk.clockdin.ui.galaxy.GalaxyHomeScreen(
+                newlySavedOrb = newlySavedOrb,
+                onSaveAnimationComplete = { newlySavedOrb = null },
                 onNavigateToPaint = { navController.navigate(Screen.Paint.route) },
                 onNavigateToSettings = { navController.navigate(Screen.Settings.route) },
                 onNavigateToView = { route -> navController.navigate(route) },
@@ -96,7 +106,8 @@ fun ClockdinNavHost(
         ) {
             com.vk.clockdin.ui.paint.PaintScreen(
                 onBack = { navController.popBackStack() },
-                onProceedToSave = { _, _ ->
+                onProceedToSave = { orbPath, colors ->
+                    newlySavedOrb = Pair(orbPath, colors)
                     navController.popBackStack()
                 }
             )
@@ -197,15 +208,21 @@ fun ClockdinNavHost(
         ) {
             com.vk.clockdin.ui.detail.EntryDetailScreen(
                 onBack = { navController.popBackStack() },
-                onOpenPhoto = { path ->
-                    navController.navigate(Screen.PhotoViewer.createRoute(path))
+                onOpenPhoto = { paths, initialIndex ->
+                    navController.navigate(Screen.PhotoViewer.createRoute(paths, initialIndex))
                 }
             )
         }
 
         composable(
             route = Screen.PhotoViewer.route,
-            arguments = listOf(navArgument("photoPath") { type = NavType.StringType }),
+            arguments = listOf(
+                navArgument("photoPaths") { type = NavType.StringType },
+                navArgument("initialIndex") {
+                    type = NavType.IntType
+                    defaultValue = 0
+                }
+            ),
             enterTransition = {
                 fadeIn(animationSpec = tween(300)) + scaleIn(initialScale = 0.92f, animationSpec = tween(300))
             },
@@ -213,14 +230,17 @@ fun ClockdinNavHost(
                 fadeOut(animationSpec = tween(250)) + scaleOut(targetScale = 0.92f, animationSpec = tween(250))
             }
         ) { backStackEntry ->
-            val encodedPath = backStackEntry.arguments?.getString("photoPath") ?: ""
-            val decodedPath = try {
-                java.net.URLDecoder.decode(encodedPath, java.nio.charset.StandardCharsets.UTF_8.name())
+            val encodedPaths = backStackEntry.arguments?.getString("photoPaths") ?: ""
+            val initialIndex = backStackEntry.arguments?.getInt("initialIndex") ?: 0
+            val decodedPaths = try {
+                java.net.URLDecoder.decode(encodedPaths, java.nio.charset.StandardCharsets.UTF_8.name())
             } catch (_: Exception) {
-                encodedPath
-            }
+                encodedPaths
+            }.split("|||").filter { it.isNotBlank() }
+
             com.vk.clockdin.ui.detail.FullScreenPhotoViewer(
-                photoPath = decodedPath,
+                photoPaths = decodedPaths,
+                initialIndex = initialIndex,
                 onClose = { navController.popBackStack() }
             )
         }
