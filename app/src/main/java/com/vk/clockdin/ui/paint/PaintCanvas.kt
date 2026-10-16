@@ -7,11 +7,18 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.Text
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.sp
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -51,6 +58,7 @@ fun PaintCanvas(
     brushSize: Float,
     onAddStroke: (PaintStroke) -> Unit,
     onCanvasSizeMeasured: (Float) -> Unit,
+    onNoColorSelected: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     // Current in-progress stroke data
@@ -61,7 +69,7 @@ fun PaintCanvas(
     var activeTouchOffset by remember { mutableStateOf<Offset?>(null) }
 
     val resolvedActiveColor = remember(activeColor) {
-        activeColor?.let { parseColor(it.hex) } ?: Color(0xFFFFC83D)
+        activeColor?.let { parseColor(it.hex) }
     }
 
     Box(
@@ -74,6 +82,7 @@ fun PaintCanvas(
         Canvas(modifier = Modifier.fillMaxSize()) {
             val center = Offset(size.width / 2f, size.height / 2f)
             val glowRadius = size.width / 2f * 1.25f
+            val glowColor = resolvedActiveColor ?: Color(0x283F51B5)
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 try {
@@ -81,16 +90,16 @@ fun PaintCanvas(
                         centerX = center.x,
                         centerY = center.y,
                         radius = glowRadius,
-                        color = resolvedActiveColor,
-                        intensity = 0.55f
+                        color = glowColor,
+                        intensity = if (resolvedActiveColor != null) 0.55f else 0.25f
                     )
                     drawCircle(brush = shaderBrush, radius = glowRadius, center = center)
                 } catch (_: Exception) {
                     drawCircle(
                         brush = Brush.radialGradient(
                             colors = listOf(
-                                resolvedActiveColor.copy(alpha = 0.40f),
-                                resolvedActiveColor.copy(alpha = 0.12f),
+                                glowColor.copy(alpha = if (resolvedActiveColor != null) 0.40f else 0.15f),
+                                glowColor.copy(alpha = 0.05f),
                                 Color.Transparent
                             ),
                             center = center,
@@ -104,8 +113,8 @@ fun PaintCanvas(
                 drawCircle(
                     brush = Brush.radialGradient(
                         colors = listOf(
-                            resolvedActiveColor.copy(alpha = 0.40f),
-                            resolvedActiveColor.copy(alpha = 0.12f),
+                            glowColor.copy(alpha = if (resolvedActiveColor != null) 0.40f else 0.15f),
+                            glowColor.copy(alpha = 0.05f),
                             Color.Transparent
                         ),
                         center = center,
@@ -130,6 +139,10 @@ fun PaintCanvas(
                 .pointerInput(mode, resolvedActiveColor, brushSize) {
                     detectDragGestures(
                         onDragStart = { offset ->
+                            if (resolvedActiveColor == null) {
+                                onNoColorSelected()
+                                return@detectDragGestures
+                            }
                             activeTouchOffset = offset
                             lastDropOffset = offset
                             when (mode) {
@@ -151,6 +164,7 @@ fun PaintCanvas(
                             }
                         },
                         onDrag = { change, _ ->
+                            if (resolvedActiveColor == null) return@detectDragGestures
                             change.consume()
                             val pos = change.position
                             activeTouchOffset = pos
@@ -175,6 +189,7 @@ fun PaintCanvas(
                             }
                         },
                         onDragEnd = {
+                            val activePaintColor = resolvedActiveColor ?: return@detectDragGestures
                             when (mode) {
                                 PaintMode.BRUSH -> {
                                     if (currentPoints.isNotEmpty()) {
@@ -182,7 +197,7 @@ fun PaintCanvas(
                                             PaintStroke(
                                                 mode = PaintMode.BRUSH,
                                                 points = currentPoints,
-                                                color = resolvedActiveColor,
+                                                color = activePaintColor,
                                                 strokeWidth = brushSize
                                             )
                                         )
@@ -194,7 +209,7 @@ fun PaintCanvas(
                                             PaintStroke(
                                                 mode = PaintMode.SPRAY,
                                                 sprayDots = currentSprayDots,
-                                                color = resolvedActiveColor,
+                                                color = activePaintColor,
                                                 strokeWidth = brushSize
                                             )
                                         )
@@ -206,7 +221,7 @@ fun PaintCanvas(
                                             PaintStroke(
                                                 mode = PaintMode.WATERCOLOR,
                                                 watercolorDrops = currentWatercolorDrops,
-                                                color = resolvedActiveColor,
+                                                color = activePaintColor,
                                                 strokeWidth = brushSize
                                             )
                                         )
@@ -231,13 +246,18 @@ fun PaintCanvas(
                 .pointerInput(mode, resolvedActiveColor, brushSize) {
                     detectTapGestures(
                         onTap = { offset ->
+                            val activePaintColor = resolvedActiveColor
+                            if (activePaintColor == null) {
+                                onNoColorSelected()
+                                return@detectTapGestures
+                            }
                             when (mode) {
                                 PaintMode.BRUSH -> {
                                     onAddStroke(
                                         PaintStroke(
                                             mode = PaintMode.BRUSH,
                                             points = listOf(offset),
-                                            color = resolvedActiveColor,
+                                            color = activePaintColor,
                                             strokeWidth = brushSize
                                         )
                                     )
@@ -248,7 +268,7 @@ fun PaintCanvas(
                                         PaintStroke(
                                             mode = PaintMode.SPRAY,
                                             sprayDots = burstDots,
-                                            color = resolvedActiveColor,
+                                            color = activePaintColor,
                                             strokeWidth = brushSize
                                         )
                                     )
@@ -259,7 +279,7 @@ fun PaintCanvas(
                                         PaintStroke(
                                             mode = PaintMode.WATERCOLOR,
                                             watercolorDrops = tapDrops,
-                                            color = resolvedActiveColor,
+                                            color = activePaintColor,
                                             strokeWidth = brushSize
                                         )
                                     )
@@ -269,6 +289,8 @@ fun PaintCanvas(
                     )
                 }
         ) {
+            val activePaintColor = resolvedActiveColor ?: Color.Transparent
+
             Canvas(modifier = Modifier.fillMaxSize()) {
                 val center = Offset(size.width / 2f, size.height / 2f)
                 val radius = size.width / 2f
@@ -290,7 +312,7 @@ fun PaintCanvas(
                                 PaintStroke(
                                     mode = PaintMode.BRUSH,
                                     points = currentPoints,
-                                    color = resolvedActiveColor,
+                                    color = activePaintColor,
                                     strokeWidth = brushSize
                                 )
                             )
@@ -298,12 +320,12 @@ fun PaintCanvas(
                     }
                     PaintMode.SPRAY -> {
                         if (currentSprayDots.isNotEmpty()) {
-                            drawSprayDotsDirect(currentSprayDots, resolvedActiveColor)
+                            drawSprayDotsDirect(currentSprayDots, activePaintColor)
                         }
                     }
                     PaintMode.WATERCOLOR -> {
                         if (currentWatercolorDrops.isNotEmpty()) {
-                            drawWatercolorDropsDirect(currentWatercolorDrops, resolvedActiveColor)
+                            drawWatercolorDropsDirect(currentWatercolorDrops, activePaintColor)
                         }
                     }
                 }
@@ -312,7 +334,7 @@ fun PaintCanvas(
                 activeTouchOffset?.let { touchPos ->
                     if (mode == PaintMode.SPRAY || mode == PaintMode.WATERCOLOR) {
                         drawCircle(
-                            color = resolvedActiveColor.copy(alpha = 0.35f),
+                            color = activePaintColor.copy(alpha = 0.35f),
                             radius = brushSize / 2f,
                             center = touchPos,
                             style = Stroke(width = 1.dp.toPx())
@@ -327,6 +349,45 @@ fun PaintCanvas(
                     center = center,
                     style = Stroke(width = 1.dp.toPx())
                 )
+            }
+
+            // 5. Initial prompt when no color is chosen yet and canvas is blank
+            if (resolvedActiveColor == null && strokes.isEmpty()) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .padding(horizontal = 28.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(38.dp)
+                            .clip(CircleShape)
+                            .background(Color(0x26FFFFFF))
+                            .border(1.dp, Color(0x33FFFFFF), CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "✦",
+                            color = Color(0xFFFFD54F),
+                            fontSize = 16.sp
+                        )
+                    }
+                    Text(
+                        text = "Choose your first mood color below",
+                        color = Color(0xFFFFFFFF),
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        textAlign = TextAlign.Center
+                    )
+                    Text(
+                        text = "Tap any color in the palette to start",
+                        color = Color(0xFFB0B5C6),
+                        fontSize = 11.sp,
+                        textAlign = TextAlign.Center
+                    )
+                }
             }
         }
     }

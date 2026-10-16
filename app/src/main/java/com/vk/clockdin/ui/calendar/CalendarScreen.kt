@@ -29,12 +29,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.ChevronLeft
-import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -60,6 +56,7 @@ import com.vk.clockdin.domain.model.MoodEntry
 import com.vk.clockdin.ui.galaxy.GalaxyFab
 import com.vk.clockdin.ui.galaxy.GalaxyPerspective
 import com.vk.clockdin.ui.galaxy.GalaxyTopBar
+import com.vk.clockdin.ui.galaxy.WeeklyMoodPercentageCard
 import com.vk.clockdin.ui.theme.GlassBorderHairline
 import com.vk.clockdin.ui.theme.GlassSurfaceLow
 import com.vk.clockdin.ui.theme.GlassSurfaceMedium
@@ -72,11 +69,9 @@ import com.vk.clockdin.ui.theme.TextTertiary
 import com.vk.clockdin.ui.theme.glassCard
 import com.vk.clockdin.ui.theme.spaceBackground
 import java.io.File
-import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
-import java.time.format.TextStyle
 import java.util.Locale
 
 @Composable
@@ -110,6 +105,14 @@ fun CalendarScreen(
                 onSettingsClick = onNavigateToSettings
             )
 
+            // Weekly Mood Breakdown Card
+            if (uiState.weeklyStats.totalEntriesThisWeek > 0) {
+                WeeklyMoodPercentageCard(
+                    stats = uiState.weeklyStats,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                )
+            }
+
             // Month Navigation Card
             MonthHeader(
                 currentYearMonth = uiState.currentYearMonth,
@@ -123,7 +126,8 @@ fun CalendarScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 6.dp)
-                    .glassCard(shape = RoundedCornerShape(24.dp), fillColor = GlassSurfaceLow)
+                    .glassCard(shape = RoundedCornerShape(24.dp), fillColor = Color(0xD9161922))
+                    .border(1.dp, Color(0x33FFFFFF), RoundedCornerShape(24.dp))
                     .padding(14.dp)
             ) {
                 Column(
@@ -163,13 +167,13 @@ fun CalendarScreen(
 
                                     if (dayNumber in 1..daysInMonth) {
                                         val date = uiState.currentYearMonth.atDay(dayNumber)
-                                        val entry = uiState.entriesByDate[date.toString()]
+                                        val entriesForDay = uiState.entriesByDate[date.toString()] ?: emptyList()
                                         val isSelected = date == uiState.selectedDate
                                         val isToday = date == LocalDate.now()
 
                                         CalendarDayCell(
                                             dayNumber = dayNumber,
-                                            entry = entry,
+                                            entries = entriesForDay,
                                             isSelected = isSelected,
                                             isToday = isToday,
                                             onClick = { viewModel.selectDate(date) },
@@ -188,10 +192,10 @@ fun CalendarScreen(
 
             Spacer(modifier = Modifier.height(10.dp))
 
-            // Selected Day Orb Summary Card
-            SelectedDaySummaryCard(
+            // Selected Day Orbs Section (Displays ALL entries recorded on that date!)
+            SelectedDayEntriesSection(
                 selectedDate = uiState.selectedDate,
-                entry = uiState.selectedEntry,
+                entries = uiState.selectedEntries,
                 onViewEntry = { entryId -> onEntryClick(entryId) },
                 onPaintOrb = onNavigateToPaint,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
@@ -224,7 +228,8 @@ private fun MonthHeader(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .glassCard(shape = RoundedCornerShape(20.dp), fillColor = GlassSurfaceUltraLow)
+            .glassCard(shape = RoundedCornerShape(20.dp), fillColor = Color(0xD9161922))
+            .border(1.dp, Color(0x33FFFFFF), RoundedCornerShape(20.dp))
             .padding(horizontal = 12.dp, vertical = 6.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
@@ -232,7 +237,9 @@ private fun MonthHeader(
         Box(
             modifier = Modifier
                 .size(34.dp)
-                .glassCard(shape = CircleShape, fillColor = GlassSurfaceLow)
+                .clip(CircleShape)
+                .background(Color(0x33262A36))
+                .border(1.dp, Color(0x33FFFFFF), CircleShape)
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null,
@@ -250,16 +257,18 @@ private fun MonthHeader(
 
         Text(
             text = monthText,
+            color = TextPrimary,
             fontSize = 15.sp,
             fontWeight = FontWeight.Bold,
-            color = TextPrimary,
-            letterSpacing = 0.3.sp
+            letterSpacing = 0.5.sp
         )
 
         Box(
             modifier = Modifier
                 .size(34.dp)
-                .glassCard(shape = CircleShape, fillColor = GlassSurfaceLow)
+                .clip(CircleShape)
+                .background(Color(0x33262A36))
+                .border(1.dp, Color(0x33FFFFFF), CircleShape)
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null,
@@ -280,16 +289,12 @@ private fun MonthHeader(
 @Composable
 private fun CalendarDayCell(
     dayNumber: Int,
-    entry: MoodEntry?,
+    entries: List<MoodEntry>,
     isSelected: Boolean,
     isToday: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val primaryColor = remember(entry?.gradientStops) {
-        entry?.gradientStops?.firstOrNull()?.let { parseColor(it.hex) } ?: Color(0xFFFFC83D)
-    }
-
     Box(
         modifier = modifier
             .aspectRatio(1f)
@@ -321,27 +326,38 @@ private fun CalendarDayCell(
                 color = if (isSelected) TextPrimary else if (isToday) MoodJoy else TextSecondary
             )
 
-            if (entry != null) {
+            if (entries.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(2.dp))
-                // Radiant mini orb dot
-                Box(
-                    modifier = Modifier
-                        .size(8.dp)
-                        .clip(CircleShape)
-                        .background(primaryColor)
-                        .border(0.5.dp, Color.White.copy(alpha = 0.8f), CircleShape)
-                )
+                // Radiant mini orb dot(s) for multiple entries per day
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(2.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    val displayed = entries.take(3)
+                    displayed.forEach { entry ->
+                        val dotColor = remember(entry.gradientStops) {
+                            entry.gradientStops.firstOrNull()?.let { parseColor(it.hex) } ?: Color(0xFFFFC83D)
+                        }
+                        Box(
+                            modifier = Modifier
+                                .size(if (displayed.size == 1) 7.dp else 5.dp)
+                                .clip(CircleShape)
+                                .background(dotColor)
+                                .border(0.5.dp, Color.White.copy(alpha = 0.7f), CircleShape)
+                        )
+                    }
+                }
             } else {
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(7.dp))
             }
         }
     }
 }
 
 @Composable
-private fun SelectedDaySummaryCard(
+private fun SelectedDayEntriesSection(
     selectedDate: LocalDate,
-    entry: MoodEntry?,
+    entries: List<MoodEntry>,
     onViewEntry: (Long) -> Unit,
     onPaintOrb: () -> Unit,
     modifier: Modifier = Modifier
@@ -350,165 +366,262 @@ private fun SelectedDaySummaryCard(
         selectedDate.format(DateTimeFormatter.ofPattern("EEEE, MMMM d, yyyy", Locale.getDefault()))
     }
 
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .glassCard(shape = RoundedCornerShape(22.dp), fillColor = GlassSurfaceLow)
-            .padding(16.dp)
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        if (entry != null) {
-            val primaryColor = remember(entry.gradientStops) {
-                entry.gradientStops.firstOrNull()?.let { parseColor(it.hex) } ?: Color(0xFFFFC83D)
-            }
+        // Section Header
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 4.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = formattedDate,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.White
+            )
 
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(14.dp)
+            if (entries.isNotEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(Color(0x33161922))
+                        .border(1.dp, Color(0x33FFFFFF), RoundedCornerShape(12.dp))
+                        .padding(horizontal = 8.dp, vertical = 3.dp)
                 ) {
-                    // Orb Image with ambient glow
-                    Box(
-                        modifier = Modifier.size(58.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Canvas(modifier = Modifier.fillMaxSize()) {
-                            val center = Offset(size.width / 2f, size.height / 2f)
-                            drawCircle(
-                                brush = Brush.radialGradient(
-                                    colors = listOf(primaryColor.copy(alpha = 0.50f), Color.Transparent),
-                                    center = center,
-                                    radius = size.width / 2f * 1.25f
-                                ),
-                                radius = size.width / 2f * 1.25f,
-                                center = center
-                            )
-                        }
+                    Text(
+                        text = "${entries.size} ${if (entries.size == 1) "Orb" else "Orbs"}",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color(0xFF2FD4A7)
+                    )
+                }
+            }
+        }
 
-                        Box(
-                            modifier = Modifier
-                                .size(50.dp)
-                                .clip(CircleShape)
-                                .border(1.dp, GlassBorderHairline, CircleShape)
-                                .background(Color(0xFF07080E)),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            if (entry.orbImagePath.isNotBlank()) {
-                                AsyncImage(
-                                    model = File(entry.orbImagePath),
-                                    contentDescription = "Mood Orb",
-                                    modifier = Modifier.fillMaxSize(),
-                                    contentScale = ContentScale.Crop
-                                )
-                            }
-                        }
+        if (entries.isNotEmpty()) {
+            // Render each mood entry card recorded on that day
+            entries.forEach { entry ->
+                val primaryColor = remember(entry.gradientStops) {
+                    entry.gradientStops.firstOrNull()?.let { parseColor(it.hex) } ?: Color(0xFFFFC83D)
+                }
+                val timeStr = remember(entry.createdAt) {
+                    try {
+                        java.time.Instant.ofEpochMilli(entry.createdAt)
+                            .atZone(java.time.ZoneId.systemDefault())
+                            .format(DateTimeFormatter.ofPattern("h:mm a", Locale.getDefault()))
+                    } catch (_: Exception) {
+                        "Recorded"
                     }
+                }
+                val photoCount = remember(entry.photoPath) {
+                    entry.photoPaths.filter { it.isNotBlank() }.size
+                }
 
-                    Column(
-                        modifier = Modifier.weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        Text(
-                            text = formattedDate,
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = TextPrimary
-                        )
-
-                        // Mood Pills
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .glassCard(shape = RoundedCornerShape(20.dp), fillColor = Color(0xD9161922))
+                        .border(1.dp, Color(0x33FFFFFF), RoundedCornerShape(20.dp))
+                        .padding(14.dp)
+                ) {
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         Row(
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-                            entry.gradientStops.take(3).forEach { stop ->
-                                val c = parseColor(stop.hex)
-                                Row(
-                                    modifier = Modifier
-                                        .glassCard(shape = RoundedCornerShape(8.dp), fillColor = GlassSurfaceUltraLow)
-                                        .border(0.5.dp, c.copy(alpha = 0.4f), RoundedCornerShape(8.dp))
-                                    .padding(horizontal = 6.dp, vertical = 2.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                                ) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(5.dp)
-                                            .clip(CircleShape)
-                                            .background(c)
+                            // Orb preview image with subtle ambient glow
+                            Box(
+                                modifier = Modifier.size(54.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Canvas(modifier = Modifier.fillMaxSize()) {
+                                    val center = Offset(size.width / 2f, size.height / 2f)
+                                    drawCircle(
+                                        brush = Brush.radialGradient(
+                                            colors = listOf(primaryColor.copy(alpha = 0.45f), Color.Transparent),
+                                            center = center,
+                                            radius = size.width / 2f * 1.2f
+                                        ),
+                                        radius = size.width / 2f * 1.2f,
+                                        center = center
                                     )
+                                }
+
+                                Box(
+                                    modifier = Modifier
+                                        .size(46.dp)
+                                        .clip(CircleShape)
+                                        .border(1.dp, GlassBorderHairline, CircleShape)
+                                        .background(Color(0xFF07080E)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    if (entry.orbImagePath.isNotBlank()) {
+                                        AsyncImage(
+                                            model = File(entry.orbImagePath),
+                                            contentDescription = "Mood Orb",
+                                            modifier = Modifier.fillMaxSize(),
+                                            contentScale = ContentScale.Crop
+                                        )
+                                    }
+                                }
+                            }
+
+                            Column(
+                                modifier = Modifier.weight(1f),
+                                verticalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
                                     Text(
-                                        text = stop.label ?: stop.hex,
-                                        fontSize = 10.sp,
-                                        color = TextPrimary,
-                                        fontWeight = FontWeight.Medium
+                                        text = timeStr,
+                                        fontSize = 12.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        color = Color(0xFFB0B5C6)
+                                    )
+
+                                    if (photoCount > 0) {
+                                        Text(
+                                            text = "📷 $photoCount ${if (photoCount == 1) "photo" else "photos"}",
+                                            fontSize = 11.sp,
+                                            color = Color(0xFF8A90A5)
+                                        )
+                                    }
+                                }
+
+                                // Mood Pills
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(5.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    entry.gradientStops.take(4).forEach { stop ->
+                                        val c = parseColor(stop.hex)
+                                        Row(
+                                            modifier = Modifier
+                                                .clip(RoundedCornerShape(8.dp))
+                                                .background(Color(0x66161922))
+                                                .border(0.5.dp, c.copy(alpha = 0.6f), RoundedCornerShape(8.dp))
+                                                .padding(horizontal = 6.dp, vertical = 2.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                        ) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(5.dp)
+                                                    .clip(CircleShape)
+                                                    .background(c)
+                                            )
+                                            Text(
+                                                text = stop.label ?: stop.hex,
+                                                fontSize = 10.sp,
+                                                color = Color.White,
+                                                fontWeight = FontWeight.Medium
+                                            )
+                                        }
+                                    }
+                                }
+
+                                if (!entry.note.isNullOrBlank()) {
+                                    Text(
+                                        text = entry.note,
+                                        fontSize = 12.sp,
+                                        color = Color(0xFFE2E4EB),
+                                        maxLines = 2,
+                                        overflow = TextOverflow.Ellipsis
                                     )
                                 }
                             }
                         }
 
-                        if (!entry.note.isNullOrBlank()) {
+                        // View Details Button
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(36.dp)
+                                .clip(RoundedCornerShape(18.dp))
+                                .background(Color(0x33262A36))
+                                .border(1.dp, Color(0x33FFFFFF), RoundedCornerShape(18.dp))
+                                .clickable { onViewEntry(entry.id) },
+                            contentAlignment = Alignment.Center
+                        ) {
                             Text(
-                                text = entry.note,
+                                text = "View Orb Details ✦",
                                 fontSize = 12.sp,
-                                color = TextSecondary,
-                                maxLines = 2,
-                                overflow = TextOverflow.Ellipsis
+                                fontWeight = FontWeight.SemiBold,
+                                color = Color.White
                             )
                         }
                     }
                 }
-
-                // View Details Button
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(38.dp)
-                        .glassCard(shape = RoundedCornerShape(19.dp), fillColor = GlassSurfaceMedium)
-                        .clickable { onViewEntry(entry.id) },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "View Orb Details ✦",
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = TextPrimary
-                    )
-                }
             }
-        } else {
-            // No entry on this day
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+
+            // Quick Add Another Orb on this day
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(42.dp)
+                    .clip(RoundedCornerShape(21.dp))
+                    .background(Color(0x26161922))
+                    .border(1.dp, Color(0x33FFFFFF), RoundedCornerShape(21.dp))
+                    .clickable { onPaintOrb() },
+                contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = formattedDate,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = TextPrimary
-                )
-
-                Text(
-                    text = "No mood orb recorded for this day.",
+                    text = "+ Paint Another Mood Orb",
                     fontSize = 13.sp,
-                    color = TextTertiary
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color(0xFFFFC83D)
                 )
-
-                Box(
-                    modifier = Modifier
-                        .height(38.dp)
-                        .glassCard(shape = RoundedCornerShape(19.dp), fillColor = GlassSurfaceMedium)
-                        .clickable { onPaintOrb() }
-                        .padding(horizontal = 16.dp),
-                    contentAlignment = Alignment.Center
+            }
+        } else {
+            // No entries on this day
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .glassCard(shape = RoundedCornerShape(20.dp), fillColor = Color(0xD9161922))
+                    .border(1.dp, Color(0x33FFFFFF), RoundedCornerShape(20.dp))
+                    .padding(20.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     Text(
-                        text = "Paint Today's Orb ✦",
+                        text = "No mood orb recorded for this day.",
                         fontSize = 13.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = TextPrimary
+                        color = Color(0xFFB0B5C6)
                     )
+
+                    Box(
+                        modifier = Modifier
+                            .height(40.dp)
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(
+                                Brush.horizontalGradient(
+                                    listOf(Color(0xFF7C4DFF).copy(alpha = 0.5f), Color(0xFF00E5FF).copy(alpha = 0.35f))
+                                )
+                            )
+                            .border(1.dp, Color(0x66FFFFFF), RoundedCornerShape(20.dp))
+                            .clickable { onPaintOrb() }
+                            .padding(horizontal = 20.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "Paint Today's Orb ✦",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                    }
                 }
             }
         }

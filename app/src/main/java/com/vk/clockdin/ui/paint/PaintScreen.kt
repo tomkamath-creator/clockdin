@@ -149,6 +149,7 @@ fun PaintScreen(
                     brushSize = uiState.brushSize,
                     onAddStroke = { viewModel.addStroke(it) },
                     onCanvasSizeMeasured = { size -> measuredCanvasSize = size },
+                    onNoColorSelected = { viewModel.requestFirstColorSelection() },
                     modifier = Modifier.fillMaxSize(0.92f)
                 )
             }

@@ -44,21 +44,12 @@ class PaintViewModel @Inject constructor(
             }
         }
 
-        // Collect available mood palette colors
+        // Collect available mood palette colors without preselecting any color
         viewModelScope.launch {
             moodColorRepository.getAllColors().collect { colors ->
                 _uiState.update { state ->
-                    val defaultSelected = if (state.selectedColors.isEmpty() && colors.size >= 2) {
-                        listOf(colors[0], colors[1])
-                    } else {
-                        state.selectedColors
-                    }
-                    val active = state.activeColor ?: defaultSelected.firstOrNull()
-
                     state.copy(
-                        availableColors = colors,
-                        selectedColors = defaultSelected,
-                        activeColor = active
+                        availableColors = colors
                     )
                 }
             }
@@ -93,21 +84,16 @@ class PaintViewModel @Inject constructor(
     fun toggleMoodColor(color: MoodColor) {
         val current = _uiState.value.selectedColors
         if (current.contains(color)) {
-            if (current.size <= 1) {
-                // Minimum 1 color required
-                triggerShake("Select at least 1 mood color")
-                return
-            }
             val updated = current - color
             _uiState.update {
                 it.copy(
                     selectedColors = updated,
-                    activeColor = if (it.activeColor == color) updated.firstOrNull() ?: it.activeColor else it.activeColor,
-                    hasUnsavedChanges = true
+                    activeColor = if (it.activeColor == color) updated.firstOrNull() else it.activeColor,
+                    hasUnsavedChanges = it.strokes.isNotEmpty() || updated.isNotEmpty()
                 )
             }
         } else {
-            // Unlimited colors allowed: no cap and no error shake!
+            // User choosing color (including their first color)
             val updated = current + color
             _uiState.update {
                 it.copy(
@@ -118,6 +104,10 @@ class PaintViewModel @Inject constructor(
             }
         }
         triggerHaptic()
+    }
+
+    fun requestFirstColorSelection() {
+        triggerShake("Choose your first mood color below")
     }
 
     fun addStroke(stroke: PaintStroke) {
@@ -146,6 +136,8 @@ class PaintViewModel @Inject constructor(
         _uiState.update {
             it.copy(
                 strokes = emptyList(),
+                selectedColors = emptyList(),
+                activeColor = null,
                 hasUnsavedChanges = false
             )
         }

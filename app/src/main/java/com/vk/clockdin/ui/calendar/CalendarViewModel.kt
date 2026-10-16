@@ -4,8 +4,10 @@ package com.vk.clockdin.ui.calendar
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.vk.clockdin.domain.model.MoodEntry
+import com.vk.clockdin.domain.model.WeeklyMoodStats
 import com.vk.clockdin.domain.repository.MoodEntryRepository
 import com.vk.clockdin.domain.usecase.CalculateStreakUseCase
+import com.vk.clockdin.domain.usecase.CalculateWeeklyMoodStatsUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -19,19 +21,24 @@ import javax.inject.Inject
 
 data class CalendarUiState(
     val currentYearMonth: YearMonth = YearMonth.now(),
-    val entriesByDate: Map<String, MoodEntry> = emptyMap(),
+    val entriesByDate: Map<String, List<MoodEntry>> = emptyMap(),
     val selectedDate: LocalDate = LocalDate.now(),
     val streakCount: Int = 0,
+    val weeklyStats: WeeklyMoodStats = WeeklyMoodStats(),
     val isLoading: Boolean = true
 ) {
+    val selectedEntries: List<MoodEntry>
+        get() = entriesByDate[selectedDate.toString()] ?: emptyList()
+
     val selectedEntry: MoodEntry?
-        get() = entriesByDate[selectedDate.toString()]
+        get() = selectedEntries.firstOrNull()
 }
 
 @HiltViewModel
 class CalendarViewModel @Inject constructor(
     private val moodEntryRepository: MoodEntryRepository,
-    private val calculateStreakUseCase: CalculateStreakUseCase
+    private val calculateStreakUseCase: CalculateStreakUseCase,
+    private val calculateWeeklyMoodStatsUseCase: CalculateWeeklyMoodStatsUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(CalendarUiState())
@@ -44,13 +51,17 @@ class CalendarViewModel @Inject constructor(
     private fun loadEntries() {
         viewModelScope.launch {
             moodEntryRepository.getAllEntries().collectLatest { entries ->
-                val dateMap = entries.associateBy { it.localDate }
+                // Group all entries by date, sorting newest first within each day
+                val dateMap = entries.groupBy { it.localDate }
+                    .mapValues { (_, list) -> list.sortedByDescending { it.createdAt } }
                 val streak = calculateStreakUseCase(entries.map { it.localDate })
+                val weekly = calculateWeeklyMoodStatsUseCase(entries)
 
                 _uiState.update {
                     it.copy(
                         entriesByDate = dateMap,
                         streakCount = streak,
+                        weeklyStats = weekly,
                         isLoading = false
                     )
                 }

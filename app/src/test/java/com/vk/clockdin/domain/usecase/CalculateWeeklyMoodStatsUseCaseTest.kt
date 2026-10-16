@@ -103,4 +103,43 @@ class CalculateWeeklyMoodStatsUseCaseTest {
         assertEquals("/path/photo2.jpg", entry.photoPaths[1])
         assertEquals("/path/photo3.jpg", entry.photoPaths[2])
     }
+
+    @Test
+    fun multipleEntriesSameDay_aggregatesCorrectly() {
+        val entries = listOf(
+            MoodEntry(
+                id = 1L,
+                createdAt = 1700000000000L,
+                localDate = "2026-10-15",
+                gradientStops = listOf(
+                    GradientStop(hex = "#FFC83D", position = 0f, label = "Joy")
+                ),
+                orbImagePath = "/path/orb1.png"
+            ),
+            MoodEntry(
+                id = 2L,
+                createdAt = 1700003600000L,
+                localDate = "2026-10-15",
+                gradientStops = listOf(
+                    GradientStop(hex = "#FFC83D", position = 0f, label = "Joy")
+                ),
+                orbImagePath = "/path/orb2.png"
+            ),
+            MoodEntry(
+                id = 3L,
+                createdAt = 1700007200000L,
+                localDate = "2026-10-15",
+                gradientStops = listOf(
+                    GradientStop(hex = "#2FD4A7", position = 0f, label = "Calm")
+                ),
+                orbImagePath = "/path/orb3.png"
+            )
+        )
+
+        val result = useCase(entries, referenceDate = LocalDate.parse("2026-10-15"))
+        assertEquals(3, result.totalEntriesThisWeek)
+        assertEquals("Joy", result.majorityMood)
+        assertEquals(66, result.majorityPercentage)
+        assertEquals(2, result.breakdown.size)
+    }
 }

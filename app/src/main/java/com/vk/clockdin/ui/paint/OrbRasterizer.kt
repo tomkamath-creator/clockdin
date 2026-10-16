@@ -210,6 +210,7 @@ object OrbRasterizer {
         return hexStops.mapIndexed { index, hex ->
             val pos = if (total > 1) index.toFloat() / (total - 1) else 0f
             val matchingLabel = fallbackColors.firstOrNull { it.hex.equals(hex, ignoreCase = true) }?.name
+                ?: com.vk.clockdin.data.local.DefaultPalette.defaultColors.firstOrNull { it.hex.equals(hex, ignoreCase = true) }?.name
             GradientStop(hex = hex, position = pos, label = matchingLabel)
         }
     }
