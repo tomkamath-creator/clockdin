@@ -193,6 +193,7 @@ fun PaintScreen(
                 onDismiss = { saveSheetPayload = null },
                 onSaveSuccess = { savedEntry ->
                     saveSheetPayload = null
+                    viewModel.clearCanvas()
                     // Immediately transition to Galaxy screen for seamless in-flight placement
                     onProceedToSave(savedEntry.orbImagePath, savedEntry.gradientStops)
                 }

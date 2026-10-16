@@ -44,6 +44,7 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.vk.clockdin.domain.math.FibonacciSphere
 import com.vk.clockdin.domain.model.GradientStop
 import com.vk.clockdin.domain.model.MoodEntry
 import com.vk.clockdin.ui.theme.spaceBackground
@@ -396,7 +397,7 @@ fun GalaxyCanvas(
 
         val inFlightOrb = activeSavedOrb
         val targetBead = inFlightOrb?.let { orb ->
-            engine.beads.firstOrNull { it.entry.orbImagePath == orb.first } ?: engine.beads.lastOrNull()
+            engine.beads.firstOrNull { it.entry.orbImagePath == orb.first }
         }
 
         // 4. Draw beads (capped to nearest 400 for full glow, rest as simple dots)
@@ -408,7 +409,7 @@ fun GalaxyCanvas(
             if (!bead.isVisible) continue
 
             // If this bead is actively in-flight arriving from the paint canvas, suppress static drawing
-            if (inFlightOrb != null && bead == targetBead && flightProgress.value < 0.98f) {
+            if (inFlightOrb != null && (bead == targetBead || bead.entry.orbImagePath == inFlightOrb.first) && flightProgress.value < 0.98f) {
                 continue
             }
 
@@ -470,37 +471,54 @@ fun GalaxyCanvas(
             }
         }
 
-        // 5. Draw in-flight newly saved orb gliding from paint canvas center directly into targetBead position
-        if (inFlightOrb != null && targetBead != null) {
+        // 5. Draw in-flight newly saved orb gliding smoothly from screen center into its exact galaxy position
+        if (inFlightOrb != null) {
             val t = flightProgress.value
-            val p0 = Offset(centerX, centerY * 0.82f)
-            val p3 = Offset(targetBead.screenX, targetBead.screenY)
-            val p1 = Offset(p0.x + (p3.x - p0.x) * 0.25f - 25f, p0.y + (p3.y - p0.y) * 0.1f - 35f)
-            val p2 = Offset(p0.x + (p3.x - p0.x) * 0.75f, p3.y - 25f)
+            val targetIndex = targetBead?.let { engine.beads.indexOf(it) } ?: engine.beads.size
+            val totalCount = (if (targetBead != null) engine.beads.size else engine.beads.size + 1).coerceAtLeast(1)
+            val targetWorldPos = FibonacciSphere.calculatePosition(
+                index = targetIndex,
+                totalCount = totalCount,
+                sphereRadius = 360f
+            )
+            val targetProjected = FibonacciSphere.project(
+                point = targetWorldPos,
+                yawRad = yaw,
+                pitchRad = pitch,
+                centerX = centerX,
+                centerY = centerY,
+                zoom = zoom,
+                focal = 1100f
+            )
+            val targetVisualRadius = (22f * targetProjected.scale).coerceIn(10f, 65f)
+
+            val p0 = Offset(centerX, centerY)
+            val p3 = Offset(targetProjected.screenX, targetProjected.screenY)
+            val p1 = Offset(p0.x + (p3.x - p0.x) * 0.35f, p0.y + (p3.y - p0.y) * 0.15f - 30f)
+            val p2 = Offset(p0.x + (p3.x - p0.x) * 0.70f, p3.y - 15f)
             val currentPos = computeCubicBezier(p0, p1, p2, p3, t)
 
-            val startRadius = with(density) { 95.dp.toPx() }
-            val endRadius = targetBead.visualRadius
-            val currentRadius = startRadius + (endRadius - startRadius) * t
+            val startRadius = with(density) { 38.dp.toPx() }
+            val currentRadius = startRadius + (targetVisualRadius - startRadius) * t
 
-            val primaryColor = inFlightOrb.second.firstOrNull()?.let { parseDominantHex(it.hex) } ?: targetBead.dominantColor
+            val primaryColor = inFlightOrb.second.firstOrNull()?.let { parseDominantHex(it.hex) } ?: targetBead?.dominantColor ?: Color(0xFFB388FF)
 
-            // Glowing halo wake
+            // Subtle glowing halo wake
             drawCircle(
                 brush = Brush.radialGradient(
                     colors = listOf(
-                        primaryColor.copy(alpha = 0.55f * (1f - t * 0.25f)),
+                        primaryColor.copy(alpha = 0.45f * (1f - t * 0.25f)),
                         Color.Transparent
                     ),
                     center = currentPos,
-                    radius = currentRadius * 1.8f
+                    radius = currentRadius * 1.35f
                 ),
-                radius = currentRadius * 1.8f,
+                radius = currentRadius * 1.35f,
                 center = currentPos
             )
 
             // Render in-flight orb image
-            val bmp = flightBitmap ?: targetBead.cachedBitmap
+            val bmp = flightBitmap ?: targetBead?.cachedBitmap
             if (bmp != null) {
                 val diameter = (currentRadius * 2f).toInt().coerceAtLeast(2)
                 drawImage(
@@ -520,16 +538,16 @@ fun GalaxyCanvas(
                 )
             }
 
-            // Landing shockwave ring when t approaches 1f
-            if (t > 0.75f) {
-                val burstT = ((t - 0.75f) / 0.25f).coerceIn(0f, 1f)
-                val burstRadius = currentRadius + burstT * with(density) { 45.dp.toPx() }
-                val burstAlpha = (1f - burstT) * 0.85f
+            // Landing subtle shockwave ring when t approaches 1f
+            if (t > 0.80f) {
+                val burstT = ((t - 0.80f) / 0.20f).coerceIn(0f, 1f)
+                val burstRadius = targetVisualRadius + burstT * with(density) { 22.dp.toPx() }
+                val burstAlpha = (1f - burstT) * 0.75f
                 drawCircle(
                     color = primaryColor.copy(alpha = burstAlpha),
                     radius = burstRadius,
                     center = p3,
-                    style = Stroke(width = with(density) { 2.5.dp.toPx() } * (1f - burstT))
+                    style = Stroke(width = with(density) { 2.dp.toPx() } * (1f - burstT))
                 )
             }
         }

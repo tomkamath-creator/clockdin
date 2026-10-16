@@ -47,6 +47,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -183,7 +184,9 @@ fun EntryDetailScreen(
                         Box(
                             modifier = Modifier
                                 .size(40.dp)
-                                .glassCard(shape = CircleShape, fillColor = GlassSurfaceLow)
+                                .clip(CircleShape)
+                                .background(Color(0x26FF5252))
+                                .border(1.dp, Color(0x66FF5252), CircleShape)
                                 .clickable(
                                     interactionSource = remember { MutableInteractionSource() },
                                     indication = null,
@@ -194,7 +197,7 @@ fun EntryDetailScreen(
                             Icon(
                                 imageVector = Icons.Default.DeleteOutline,
                                 contentDescription = "Delete Orb",
-                                tint = Color(0xFFFF5376),
+                                tint = Color(0xFFFF5252),
                                 modifier = Modifier.size(20.dp)
                             )
                         }
@@ -213,6 +216,39 @@ fun EntryDetailScreen(
                             .fillMaxWidth()
                             .padding(horizontal = 20.dp)
                     )
+
+                    Spacer(modifier = Modifier.height(20.dp))
+
+                    // Prominent Delete Mood Orb button
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 20.dp)
+                            .height(50.dp)
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(Color(0x26FF5252))
+                            .border(1.dp, Color(0x66FF5252), RoundedCornerShape(20.dp))
+                            .clickable { showDeleteConfirmDialog = true },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.DeleteOutline,
+                                contentDescription = "Delete Mood Orb",
+                                tint = Color(0xFFFF5252),
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Text(
+                                text = "Delete Mood Orb",
+                                color = Color(0xFFFF5252),
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 15.sp
+                            )
+                        }
+                    }
 
                     Spacer(modifier = Modifier.height(32.dp))
                 }
@@ -496,7 +532,9 @@ private fun DeleteConfirmationDialog(
         Box(
             modifier = Modifier
                 .fillMaxWidth(0.92f)
-                .glassCard(shape = RoundedCornerShape(26.dp), fillColor = GlassSurfaceMedium)
+                .clip(RoundedCornerShape(26.dp))
+                .background(Color(0xFF1A1D26))
+                .border(1.dp, Color(0x33FFFFFF), RoundedCornerShape(26.dp))
                 .padding(24.dp)
         ) {
             Column(
@@ -506,15 +544,16 @@ private fun DeleteConfirmationDialog(
                 Text(
                     text = "Delete this mood orb?",
                     fontSize = 18.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = TextPrimary
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFFFFFFFF)
                 )
 
                 Text(
                     text = "This orb, reflection note, and attached photos will be permanently removed from your galaxy.",
                     fontSize = 14.sp,
-                    color = TextSecondary,
-                    lineHeight = 20.sp
+                    color = Color(0xFFE2E4EB),
+                    lineHeight = 20.sp,
+                    textAlign = TextAlign.Center
                 )
 
                 Row(
@@ -526,11 +565,13 @@ private fun DeleteConfirmationDialog(
                         modifier = Modifier
                             .weight(1f)
                             .height(48.dp)
-                            .glassCard(shape = RoundedCornerShape(24.dp), fillColor = GlassSurfaceLow)
+                            .clip(RoundedCornerShape(24.dp))
+                            .background(Color(0xFF262A36))
+                            .border(1.dp, Color(0x33FFFFFF), RoundedCornerShape(24.dp))
                             .clickable(onClick = onDismiss),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text("Cancel", color = TextPrimary, fontWeight = FontWeight.Medium, fontSize = 14.sp)
+                        Text("Cancel", color = Color(0xFFE2E4EB), fontWeight = FontWeight.Medium, fontSize = 14.sp)
                     }
 
                     // Bold, vivid high-contrast Crimson Delete button

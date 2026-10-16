@@ -71,8 +71,8 @@ fun WeeklyMoodPercentageCard(
             .animateContentSize()
             .glassCard(
                 shape = RoundedCornerShape(20.dp),
-                fillColor = GlassSurfaceLow.copy(alpha = 0.85f),
-                borderColor = majorityColor.copy(alpha = 0.35f),
+                fillColor = Color(0xD9161922),
+                borderColor = Color(0x33FFFFFF),
                 borderWidth = 1.dp
             )
             .clickable(
@@ -106,14 +106,14 @@ fun WeeklyMoodPercentageCard(
                     Text(
                         text = "Majority Mood: ",
                         fontSize = 12.sp,
-                        color = TextSecondary,
+                        color = Color(0xFFB0B5C6),
                         fontWeight = FontWeight.Medium
                     )
 
                     Text(
                         text = "${stats.majorityMood} (${stats.majorityPercentage}%)",
                         fontSize = 12.sp,
-                        color = TextPrimary,
+                        color = Color(0xFFFFFFFF),
                         fontWeight = FontWeight.Bold
                     )
                 }
@@ -121,7 +121,7 @@ fun WeeklyMoodPercentageCard(
                 Icon(
                     imageVector = if (isExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
                     contentDescription = if (isExpanded) "Collapse" else "Expand",
-                    tint = TextSecondary,
+                    tint = Color(0xFFB0B5C6),
                     modifier = Modifier.size(18.dp)
                 )
             }
@@ -139,7 +139,7 @@ fun WeeklyMoodPercentageCard(
                     Text(
                         text = "Weekly Breakdown (${stats.totalEntriesThisWeek} ${if (stats.totalEntriesThisWeek == 1) "entry" else "entries"})",
                         fontSize = 11.sp,
-                        color = TextTertiary,
+                        color = Color(0xFFB0B5C6),
                         fontWeight = FontWeight.Medium
                     )
 
@@ -150,7 +150,7 @@ fun WeeklyMoodPercentageCard(
                                 .fillMaxWidth()
                                 .height(8.dp)
                                 .clip(RoundedCornerShape(4.dp))
-                                .background(Color.White.copy(alpha = 0.08f))
+                                .background(Color(0x26FFFFFF))
                         ) {
                             stats.breakdown.forEach { item ->
                                 val itemColor = parseColor(item.hexColor)
@@ -176,8 +176,8 @@ fun WeeklyMoodPercentageCard(
                                 modifier = Modifier
                                     .glassCard(
                                         shape = RoundedCornerShape(12.dp),
-                                        fillColor = GlassSurfaceUltraLow,
-                                        borderColor = itemColor.copy(alpha = 0.4f),
+                                        fillColor = Color(0x99161922),
+                                        borderColor = itemColor.copy(alpha = 0.5f),
                                         borderWidth = 1.dp
                                     )
                                     .padding(horizontal = 8.dp, vertical = 4.dp),
@@ -194,7 +194,7 @@ fun WeeklyMoodPercentageCard(
                                 Text(
                                     text = "${item.label} ${item.percentage}%",
                                     fontSize = 11.sp,
-                                    color = TextPrimary,
+                                    color = Color(0xFFFFFFFF),
                                     fontWeight = FontWeight.Medium
                                 )
                             }
