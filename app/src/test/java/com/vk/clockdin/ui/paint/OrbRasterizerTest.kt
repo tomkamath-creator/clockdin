@@ -74,7 +74,7 @@ class OrbRasterizerTest {
     }
 
     @Test
-    fun extractDominantStops_fallbackWhenEmpty_returnsAtLeastTwoStops() {
+    fun extractDominantStops_fallbackWhenEmpty_returnsAllFallbackColors() {
         val fallback = listOf(
             MoodColor(10, "Focus", "#3D82FF", MoodCategory.NEUTRAL, 0),
             MoodColor(11, "Flow", "#00E5FF", MoodCategory.POSITIVE, 1),
@@ -86,11 +86,18 @@ class OrbRasterizerTest {
             fallbackColors = fallback
         )
 
-        assertEquals(2, result.size)
+        assertEquals(3, result.size)
         assertEquals("#3D82FF", result[0].hex)
         assertEquals("Focus", result[0].label)
         assertEquals(0f, result[0].position, 0.001f)
-        assertEquals(1f, result[1].position, 0.001f)
+
+        assertEquals("#00E5FF", result[1].hex)
+        assertEquals("Flow", result[1].label)
+        assertEquals(0.5f, result[1].position, 0.001f)
+
+        assertEquals("#FFB703", result[2].hex)
+        assertEquals("Grateful", result[2].label)
+        assertEquals(1f, result[2].position, 0.001f)
     }
 
     @Test
