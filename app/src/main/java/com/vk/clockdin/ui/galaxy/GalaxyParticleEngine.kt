@@ -229,8 +229,7 @@ class GalaxyParticleEngine(
             val worldPos = FibonacciSphere.calculatePosition(
                 index = i,
                 totalCount = total,
-                maxRadius = 420f,
-                minRadius = 80f
+                sphereRadius = 360f
             )
 
             // Derive dominant color from gradient stops

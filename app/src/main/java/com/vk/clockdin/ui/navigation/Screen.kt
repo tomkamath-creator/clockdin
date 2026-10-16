@@ -21,14 +21,14 @@ sealed class Screen(val route: String) {
     }
 
     data object PhotoViewer : Screen("photo_viewer/{photoPaths}?index={initialIndex}") {
-        fun createRoute(photoPaths: List<String>, initialIndex: Int = 0): String {
+        fun createRoute(photoPaths: kotlin.collections.List<String>, initialIndex: Int = 0): String {
             val joined = photoPaths.joinToString("|||")
             val encoded = URLEncoder.encode(joined, StandardCharsets.UTF_8.name())
             return "photo_viewer/$encoded?index=$initialIndex"
         }
 
         fun createRoute(photoPath: String): String {
-            return createRoute(listOf(photoPath), 0)
+            return createRoute(kotlin.collections.listOf(photoPath), 0)
         }
     }
 }

@@ -50,14 +50,16 @@ object FibonacciSphere {
      * @param totalCount Total count of entries in the galaxy.
      * @param sphereRadius Outer curved sphere radius in world units (default 360f).
      * @param minRadius Retained for compatibility; defaults to sphereRadius.
+     * @param maxRadius Retained for compatibility; defaults to sphereRadius.
      */
     fun calculatePosition(
         index: Int,
         totalCount: Int,
         sphereRadius: Float = 360f,
-        minRadius: Float = sphereRadius
+        minRadius: Float = sphereRadius,
+        maxRadius: Float = sphereRadius
     ): Point3D {
-        val effectiveRadius = sphereRadius
+        val effectiveRadius = if (maxRadius != 360f && sphereRadius == 360f) maxRadius else sphereRadius
 
         if (totalCount <= 1) {
             // Place single first orb on the outer sphere surface so it orbits with rotation
