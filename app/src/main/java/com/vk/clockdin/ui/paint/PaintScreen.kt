@@ -71,8 +71,8 @@ fun PaintScreen(
     var showDiscardDialog by remember { mutableStateOf(false) }
     var measuredCanvasSize by remember { mutableFloatStateOf(512f) }
 
-    // Save bottom sheet state
-    var saveSheetPayload by remember { mutableStateOf<Pair<String, List<GradientStop>>?>(null) }
+    // Save bottom sheet state (orbPath, colors, editingEntry)
+    var saveSheetPayload by remember { mutableStateOf<Triple<String, List<GradientStop>, MoodEntry?>?>(null) }
 
     // Intercept back gesture for unsaved changes confirmation
     BackHandler(enabled = true) {
@@ -90,7 +90,7 @@ fun PaintScreen(
         viewModel.events.collect { event ->
             when (event) {
                 is PaintEvent.ProceedToSave -> {
-                    saveSheetPayload = Pair(event.orbImagePath, event.dominantColors)
+                    saveSheetPayload = Triple(event.orbImagePath, event.dominantColors, event.editingEntry)
                 }
                 is PaintEvent.ShowDiscardConfirm -> {
                     showDiscardDialog = true
@@ -170,6 +170,8 @@ fun PaintScreen(
                 validationMessage = uiState.validationMessage,
                 onColorToggle = { viewModel.toggleMoodColor(it) },
                 onActiveColorSelect = { viewModel.setActiveColor(it) },
+                onAddCustomColor = { name, hex, cat -> viewModel.addCustomColor(name, hex, cat) },
+                onDeleteCustomColor = { viewModel.deleteCustomColor(it) },
                 modifier = Modifier.padding(bottom = 6.dp)
             )
         }
@@ -186,11 +188,13 @@ fun PaintScreen(
         }
 
         // 5. Save Entry Glass Bottom Sheet
-        saveSheetPayload?.let { (orbPath, colors) ->
+        saveSheetPayload?.let { (orbPath, colors, editingEntry) ->
             SaveEntryBottomSheet(
                 orbImagePath = orbPath,
                 dominantColors = colors,
                 saveEntryUseCase = viewModel.saveEntryUseCase,
+                existingEntry = editingEntry,
+                updateEntryUseCase = viewModel.updateEntryUseCase,
                 onDismiss = { saveSheetPayload = null },
                 onSaveSuccess = { savedEntry ->
                     saveSheetPayload = null

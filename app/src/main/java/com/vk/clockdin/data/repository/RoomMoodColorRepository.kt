@@ -18,10 +18,22 @@ class RoomMoodColorRepository @Inject constructor(
 ) : MoodColorRepository {
 
     override fun getAllColors(): Flow<List<MoodColor>> =
-        moodColorDao.getAllColorsFlow().map { list -> list.map { it.toDomain() } }
+        moodColorDao.getAllColorsFlow().map { list ->
+            if (list.isEmpty()) {
+                DefaultPalette.defaultColors
+            } else {
+                list.map { it.toDomain() }
+            }
+        }
 
-    override suspend fun getAllColorsList(): List<MoodColor> =
-        moodColorDao.getAllColors().map { it.toDomain() }
+    override suspend fun getAllColorsList(): List<MoodColor> {
+        val list = moodColorDao.getAllColors()
+        return if (list.isEmpty()) {
+            DefaultPalette.defaultColors
+        } else {
+            list.map { it.toDomain() }
+        }
+    }
 
     override fun getColorsByCategory(category: MoodCategory): Flow<List<MoodColor>> =
         moodColorDao.getColorsByCategoryFlow(category).map { list -> list.map { it.toDomain() } }
@@ -29,8 +41,12 @@ class RoomMoodColorRepository @Inject constructor(
     override suspend fun getColorById(id: Long): MoodColor? =
         moodColorDao.getColorById(id)?.toDomain()
 
-    override suspend fun addColor(color: MoodColor): Long =
-        moodColorDao.insertColor(MoodColorEntity.fromDomain(color))
+    override suspend fun addColor(color: MoodColor): Long {
+        if (moodColorDao.getColorCount() == 0) {
+            moodColorDao.insertColors(DefaultPalette.defaultColors.map { MoodColorEntity.fromDomain(it) })
+        }
+        return moodColorDao.insertColor(MoodColorEntity.fromDomain(color))
+    }
 
     override suspend fun addColors(colors: List<MoodColor>) =
         moodColorDao.insertColors(colors.map { MoodColorEntity.fromDomain(it) })

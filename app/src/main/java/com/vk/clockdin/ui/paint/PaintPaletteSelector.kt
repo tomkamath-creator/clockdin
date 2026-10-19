@@ -62,10 +62,13 @@ import com.vk.clockdin.ui.theme.TextTertiary
 import com.vk.clockdin.ui.theme.glassCard
 import kotlin.math.roundToInt
 
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.ui.window.Dialog
+
 /**
  * Prominent, high-contrast, bold mood palette selector.
  * Features large 46dp glowing swatches, clear category groupings,
- * active paint indicators, and spring-animated rule feedback.
+ * active paint indicators, custom color creation, and spring-animated rule feedback.
  */
 @Composable
 fun PaintPaletteSelector(
@@ -76,8 +79,12 @@ fun PaintPaletteSelector(
     validationMessage: String?,
     onColorToggle: (MoodColor) -> Unit,
     onActiveColorSelect: (MoodColor) -> Unit,
+    onAddCustomColor: (name: String, hex: String, category: MoodCategory) -> Unit = { _, _, _ -> },
+    onDeleteCustomColor: (MoodColor) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
+    var showAddColorDialog by remember { mutableStateOf(false) }
+    var colorToDelete by remember { mutableStateOf<MoodColor?>(null) }
     // Spring physics shake offset on rule violation (< 2 or > 5 colors)
     val shakeOffset = remember { Animatable(0f) }
 
@@ -257,6 +264,12 @@ fun PaintPaletteSelector(
             horizontalArrangement = Arrangement.spacedBy(14.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            // 1. "+ Custom" button at the beginning of swatches row
+            AddCustomColorSwatch(
+                onClick = { showAddColorDialog = true }
+            )
+
+            // 2. Swatches
             filteredColors.forEach { moodColor ->
                 val isSelected = selectedColors.contains(moodColor)
                 val isActive = moodColor == activeColor
@@ -280,9 +293,34 @@ fun PaintPaletteSelector(
                             // Tapping unselected color selects and activates it
                             onColorToggle(moodColor)
                         }
-                    }
+                    },
+                    onDelete = if (!moodColor.isDefault) {
+                        { colorToDelete = moodColor }
+                    } else null
                 )
             }
+        }
+
+        // Add Custom Color Modal Dialog
+        if (showAddColorDialog) {
+            AddCustomColorDialog(
+                onDismiss = { showAddColorDialog = false },
+                onAddColor = { name, hex, cat ->
+                    onAddCustomColor(name, hex, cat)
+                }
+            )
+        }
+
+        // Delete Custom Color Confirmation Dialog
+        colorToDelete?.let { customColor ->
+            DeleteCustomColorDialog(
+                color = customColor,
+                onDismiss = { colorToDelete = null },
+                onConfirm = {
+                    onDeleteCustomColor(customColor)
+                    colorToDelete = null
+                }
+            )
         }
     }
 }
@@ -296,7 +334,105 @@ private fun ProminentColorSwatch(
     color: Color,
     isSelected: Boolean,
     isActive: Boolean,
-    onTap: () -> Unit
+    onTap: () -> Unit,
+    onDelete: (() -> Unit)? = null
+) {
+    Box {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+            modifier = Modifier
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = onTap
+                )
+                .padding(horizontal = 2.dp)
+        ) {
+            // Swatch Circle with glow and state indicators
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    // Outer glow when active
+                    .background(
+                        brush = Brush.radialGradient(
+                            colors = listOf(
+                                if (isActive) color.copy(alpha = 0.50f) else if (isSelected) color.copy(alpha = 0.20f) else Color.Transparent,
+                                Color.Transparent
+                            )
+                        ),
+                        shape = CircleShape
+                    )
+                    .padding(2.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(if (isActive) 44.dp else 40.dp)
+                        .clip(CircleShape)
+                        .background(color)
+                        .border(
+                            width = if (isActive) 3.dp else if (isSelected) 2.dp else 1.dp,
+                            color = if (isActive) Color.White else if (isSelected) Color.White.copy(alpha = 0.85f) else Color.White.copy(alpha = 0.25f),
+                            shape = CircleShape
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (isActive) {
+                        // Active paint icon inside circle
+                        Icon(
+                            imageVector = Icons.Default.Brush,
+                            contentDescription = "Active Paint Color",
+                            tint = if (isLightColor(color)) Color.Black else Color.White,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    } else if (isSelected) {
+                        // Checkmark indicator for selected colors
+                        Icon(
+                            imageVector = Icons.Default.Check,
+                            contentDescription = "Selected",
+                            tint = if (isLightColor(color)) Color.Black else Color.White,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
+            }
+
+            // Bold Mood Name
+            Text(
+                text = moodColor.name,
+                fontSize = 12.sp,
+                fontWeight = if (isActive) FontWeight.Bold else if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
+                color = if (isActive) TextPrimary else if (isSelected) TextPrimary.copy(alpha = 0.85f) else TextSecondary
+            )
+        }
+
+        // Small remove button for custom colors when selected
+        if (onDelete != null && isSelected) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .offset(x = 2.dp, y = (-2).dp)
+                    .size(18.dp)
+                    .clip(CircleShape)
+                    .background(Color(0xD9E53935))
+                    .clickable { onDelete() },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = "Delete custom color",
+                    tint = Color.White,
+                    modifier = Modifier.size(11.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun AddCustomColorSwatch(
+    onClick: () -> Unit
 ) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -305,66 +441,105 @@ private fun ProminentColorSwatch(
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,
-                onClick = onTap
+                onClick = onClick
             )
             .padding(horizontal = 2.dp)
     ) {
-        // Swatch Circle with glow and state indicators
         Box(
             modifier = Modifier
                 .size(48.dp)
-                // Outer glow when active
-                .background(
-                    brush = Brush.radialGradient(
-                        colors = listOf(
-                            if (isActive) color.copy(alpha = 0.50f) else if (isSelected) color.copy(alpha = 0.20f) else Color.Transparent,
-                            Color.Transparent
-                        )
-                    ),
-                    shape = CircleShape
-                )
                 .padding(2.dp),
             contentAlignment = Alignment.Center
         ) {
             Box(
                 modifier = Modifier
-                    .size(if (isActive) 44.dp else 40.dp)
+                    .size(40.dp)
                     .clip(CircleShape)
-                    .background(color)
-                    .border(
-                        width = if (isActive) 3.dp else if (isSelected) 2.dp else 1.dp,
-                        color = if (isActive) Color.White else if (isSelected) Color.White.copy(alpha = 0.85f) else Color.White.copy(alpha = 0.25f),
-                        shape = CircleShape
-                    ),
+                    .background(Color(0x33262A36))
+                    .border(1.2.dp, Color(0x66FFFFFF), CircleShape),
                 contentAlignment = Alignment.Center
             ) {
-                if (isActive) {
-                    // Active paint icon inside circle
-                    Icon(
-                        imageVector = Icons.Default.Brush,
-                        contentDescription = "Active Paint Color",
-                        tint = if (isLightColor(color)) Color.Black else Color.White,
-                        modifier = Modifier.size(20.dp)
-                    )
-                } else if (isSelected) {
-                    // Checkmark indicator for selected colors
-                    Icon(
-                        imageVector = Icons.Default.Check,
-                        contentDescription = "Selected",
-                        tint = if (isLightColor(color)) Color.Black else Color.White,
-                        modifier = Modifier.size(18.dp)
-                    )
-                }
+                Text(
+                    text = "+",
+                    color = Color.White,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold
+                )
             }
         }
 
-        // Bold Mood Name
         Text(
-            text = moodColor.name,
-            fontSize = 12.sp,
-            fontWeight = if (isActive) FontWeight.Bold else if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
-            color = if (isActive) TextPrimary else if (isSelected) TextPrimary.copy(alpha = 0.85f) else TextSecondary
+            text = "+ Custom",
+            fontSize = 11.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = Color(0xFFFFD54F)
         )
+    }
+}
+
+@Composable
+private fun DeleteCustomColorDialog(
+    color: MoodColor,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit
+) {
+    Dialog(onDismissRequest = onDismiss) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth(0.9f)
+                .clip(RoundedCornerShape(24.dp))
+                .background(Color(0xFF161922))
+                .border(1.dp, Color(0x33FFFFFF), RoundedCornerShape(24.dp))
+                .padding(20.dp)
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                Text(
+                    text = "Delete Custom Color?",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White
+                )
+
+                Text(
+                    text = "Remove \"${color.name}\" from your mood palette?",
+                    fontSize = 13.sp,
+                    color = Color(0xFFB0B5C6),
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(42.dp)
+                            .clip(RoundedCornerShape(21.dp))
+                            .background(Color(0x26FFFFFF))
+                            .clickable(onClick = onDismiss),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("Cancel", color = Color.White, fontSize = 13.sp)
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(42.dp)
+                            .clip(RoundedCornerShape(21.dp))
+                            .background(Color(0xFFE53935))
+                            .clickable(onClick = onConfirm),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("Delete", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                    }
+                }
+            }
+        }
     }
 }
 

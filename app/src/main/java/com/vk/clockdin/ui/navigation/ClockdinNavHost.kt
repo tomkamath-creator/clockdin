@@ -84,6 +84,13 @@ fun ClockdinNavHost(
 
         composable(
             route = Screen.Paint.route,
+            arguments = listOf(
+                navArgument("editEntryId") {
+                    type = NavType.StringType
+                    nullable = true
+                    defaultValue = null
+                }
+            ),
             enterTransition = {
                 slideInVertically(
                     initialOffsetY = { (it * 0.10f).toInt() },
@@ -227,6 +234,9 @@ fun ClockdinNavHost(
                 onBack = { navController.popBackStack() },
                 onOpenPhoto = { paths, initialIndex ->
                     navController.navigate(Screen.PhotoViewer.createRoute(paths, initialIndex))
+                },
+                onRepaintOrb = { entryId ->
+                    navController.navigate(Screen.Paint.createRoute(entryId))
                 }
             )
         }

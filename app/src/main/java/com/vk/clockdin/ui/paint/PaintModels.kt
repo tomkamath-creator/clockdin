@@ -55,13 +55,15 @@ data class PaintUiState(
     val isShaking: Boolean = false,
     val validationMessage: String? = null,
     val isRasterizing: Boolean = false,
-    val hasUnsavedChanges: Boolean = false
+    val hasUnsavedChanges: Boolean = false,
+    val editingEntry: com.vk.clockdin.domain.model.MoodEntry? = null
 )
 
 sealed interface PaintEvent {
     data class ProceedToSave(
         val orbImagePath: String,
-        val dominantColors: List<GradientStop>
+        val dominantColors: List<GradientStop>,
+        val editingEntry: com.vk.clockdin.domain.model.MoodEntry? = null
     ) : PaintEvent
     data object ShowDiscardConfirm : PaintEvent
     data object TriggerHaptic : PaintEvent

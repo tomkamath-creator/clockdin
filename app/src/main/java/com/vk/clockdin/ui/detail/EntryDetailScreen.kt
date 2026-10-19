@@ -30,6 +30,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.DeleteOutline
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.ZoomIn
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -80,11 +81,13 @@ import java.util.Locale
 fun EntryDetailScreen(
     onBack: () -> Unit,
     onOpenPhoto: (List<String>, Int) -> Unit,
+    onRepaintOrb: (Long) -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: EntryDetailViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var showDeleteConfirmDialog by remember { mutableStateOf(false) }
+    var showEditSheet by remember { mutableStateOf(false) }
 
     BackHandler(enabled = true) {
         onBack()
@@ -180,26 +183,52 @@ fun EntryDetailScreen(
                             letterSpacing = 2.sp
                         )
 
-                        // Delete Button
-                        Box(
-                            modifier = Modifier
-                                .size(40.dp)
-                                .clip(CircleShape)
-                                .background(Color(0x26FF5252))
-                                .border(1.dp, Color(0x66FF5252), CircleShape)
-                                .clickable(
-                                    interactionSource = remember { MutableInteractionSource() },
-                                    indication = null,
-                                    onClick = { showDeleteConfirmDialog = true }
-                                ),
-                            contentAlignment = Alignment.Center
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.DeleteOutline,
-                                contentDescription = "Delete Orb",
-                                tint = Color(0xFFFF5252),
-                                modifier = Modifier.size(20.dp)
-                            )
+                            // Edit Button
+                            Box(
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .glassCard(shape = CircleShape, fillColor = GlassSurfaceLow)
+                                    .border(1.dp, Color(0x33FFFFFF), CircleShape)
+                                    .clickable(
+                                        interactionSource = remember { MutableInteractionSource() },
+                                        indication = null,
+                                        onClick = { showEditSheet = true }
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Edit,
+                                    contentDescription = "Edit Entry",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+
+                            // Delete Button
+                            Box(
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(0x26FF5252))
+                                    .border(1.dp, Color(0x66FF5252), CircleShape)
+                                    .clickable(
+                                        interactionSource = remember { MutableInteractionSource() },
+                                        indication = null,
+                                        onClick = { showDeleteConfirmDialog = true }
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.DeleteOutline,
+                                    contentDescription = "Delete Orb",
+                                    tint = Color(0xFFFF5252),
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
                         }
                     }
 
@@ -217,7 +246,40 @@ fun EntryDetailScreen(
                             .padding(horizontal = 20.dp)
                     )
 
-                    Spacer(modifier = Modifier.height(20.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Prominent Edit Reflection & Photos button
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 20.dp)
+                            .height(50.dp)
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(Color(0x33262A36))
+                            .border(1.dp, Color(0x66FFFFFF), RoundedCornerShape(20.dp))
+                            .clickable { showEditSheet = true },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Edit,
+                                contentDescription = "Edit Reflection & Photos",
+                                tint = Color(0xFFFFD54F),
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Text(
+                                text = "Edit Reflection & Photos ✦",
+                                color = Color(0xFFFFD54F),
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 15.sp
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
 
                     // Prominent Delete Mood Orb button
                     Box(
@@ -251,6 +313,20 @@ fun EntryDetailScreen(
                     }
 
                     Spacer(modifier = Modifier.height(32.dp))
+                }
+
+                // Edit Entry Bottom Sheet
+                if (showEditSheet) {
+                    EditEntryBottomSheet(
+                        entry = entry,
+                        onDismiss = { showEditSheet = false },
+                        onSave = { updatedNote, updatedPhotos ->
+                            viewModel.updateEntry(updatedNote, updatedPhotos)
+                        },
+                        onRepaintOrb = {
+                            onRepaintOrb(entry.id)
+                        }
+                    )
                 }
 
                 // Delete Confirmation Dialog

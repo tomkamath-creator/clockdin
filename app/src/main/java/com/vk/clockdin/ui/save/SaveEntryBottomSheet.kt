@@ -84,13 +84,17 @@ fun SaveEntryBottomSheet(
     onDismiss: () -> Unit,
     onSaveSuccess: (MoodEntry) -> Unit,
     modifier: Modifier = Modifier,
+    existingEntry: MoodEntry? = null,
+    updateEntryUseCase: com.vk.clockdin.domain.usecase.UpdateEntryUseCase? = null,
     sheetState: SheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
-    var noteText by remember { mutableStateOf("") }
-    var attachedPhotoPaths by remember { mutableStateOf<List<String>>(emptyList()) }
+    var noteText by remember { mutableStateOf(existingEntry?.note ?: "") }
+    var attachedPhotoPaths by remember {
+        mutableStateOf<List<String>>(existingEntry?.photoPaths?.filter { it.isNotBlank() } ?: emptyList())
+    }
     var isSaving by remember { mutableStateOf(false) }
     var isProcessingPhoto by remember { mutableStateOf(false) }
 
@@ -187,7 +191,7 @@ fun SaveEntryBottomSheet(
                     verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     Text(
-                        text = "Journal Today's Orb",
+                        text = if (existingEntry != null) "Update Galaxy Orb" else "Journal Today's Orb",
                         fontSize = 17.sp,
                         fontWeight = FontWeight.Bold,
                         color = TextPrimary
@@ -464,19 +468,31 @@ fun SaveEntryBottomSheet(
                     .clickable(enabled = !isSaving) {
                         isSaving = true
                         scope.launch {
-                            val newEntry = MoodEntry(
-                                createdAt = System.currentTimeMillis(),
-                                localDate = LocalDate.now().toString(),
-                                gradientStops = dominantColors,
-                                orbImagePath = orbImagePath,
-                                note = noteText.ifBlank { null },
-                                photoPath = if (attachedPhotoPaths.isEmpty()) null else attachedPhotoPaths.joinToString("||"),
-                                songTitle = null,
-                                songArtist = null
-                            )
-                            val insertedId = saveEntryUseCase(newEntry)
-                            isSaving = false
-                            onSaveSuccess(newEntry.copy(id = insertedId))
+                            if (existingEntry != null && updateEntryUseCase != null) {
+                                val updated = existingEntry.copy(
+                                    gradientStops = dominantColors,
+                                    orbImagePath = orbImagePath,
+                                    note = noteText.ifBlank { null },
+                                    photoPath = if (attachedPhotoPaths.isEmpty()) null else attachedPhotoPaths.joinToString("||")
+                                )
+                                updateEntryUseCase(updated)
+                                isSaving = false
+                                onSaveSuccess(updated)
+                            } else {
+                                val newEntry = MoodEntry(
+                                    createdAt = System.currentTimeMillis(),
+                                    localDate = LocalDate.now().toString(),
+                                    gradientStops = dominantColors,
+                                    orbImagePath = orbImagePath,
+                                    note = noteText.ifBlank { null },
+                                    photoPath = if (attachedPhotoPaths.isEmpty()) null else attachedPhotoPaths.joinToString("||"),
+                                    songTitle = null,
+                                    songArtist = null
+                                )
+                                val insertedId = saveEntryUseCase(newEntry)
+                                isSaving = false
+                                onSaveSuccess(newEntry.copy(id = insertedId))
+                            }
                         }
                     },
                 contentAlignment = Alignment.Center
@@ -489,7 +505,7 @@ fun SaveEntryBottomSheet(
                     )
                 } else {
                     Text(
-                        text = "Save to Galaxy ✦",
+                        text = if (existingEntry != null) "Update Galaxy Orb ✦" else "Save to Galaxy ✦",
                         fontSize = 15.sp,
                         fontWeight = FontWeight.Bold,
                         color = TextPrimary,

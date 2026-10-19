@@ -10,7 +10,10 @@ import java.nio.charset.StandardCharsets
 sealed class Screen(val route: String) {
     data object Splash : Screen("splash")
     data object Galaxy : Screen("galaxy")
-    data object Paint : Screen("paint")
+    data object Paint : Screen("paint?editEntryId={editEntryId}") {
+        fun createRoute(editEntryId: Long? = null): String =
+            if (editEntryId != null) "paint?editEntryId=$editEntryId" else "paint"
+    }
     data object List : Screen("list")
     data object Calendar : Screen("calendar")
     data object Ribbon : Screen("ribbon")

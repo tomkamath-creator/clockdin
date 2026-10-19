@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import com.vk.clockdin.domain.model.MoodEntry
 import com.vk.clockdin.domain.repository.MoodEntryRepository
 import com.vk.clockdin.domain.usecase.DeleteEntryUseCase
+import com.vk.clockdin.domain.usecase.UpdateEntryUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -24,7 +25,8 @@ sealed interface EntryDetailUiState {
 class EntryDetailViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val moodEntryRepository: MoodEntryRepository,
-    private val deleteEntryUseCase: DeleteEntryUseCase
+    private val deleteEntryUseCase: DeleteEntryUseCase,
+    private val updateEntryUseCase: UpdateEntryUseCase
 ) : ViewModel() {
 
     private val entryId: Long = savedStateHandle.get<Long>("entryId") ?: 0L
@@ -44,6 +46,27 @@ class EntryDetailViewModel @Inject constructor(
                 } else {
                     EntryDetailUiState.NotFound
                 }
+            }
+        }
+    }
+
+    fun updateEntry(
+        note: String?,
+        photos: List<String>,
+        orbPath: String? = null,
+        onSuccess: () -> Unit = {}
+    ) {
+        val currentState = _uiState.value
+        if (currentState is EntryDetailUiState.Success) {
+            viewModelScope.launch {
+                val current = currentState.entry
+                val updated = current.copy(
+                    note = note?.ifBlank { null },
+                    photoPath = if (photos.isEmpty()) null else photos.joinToString("||"),
+                    orbImagePath = orbPath ?: current.orbImagePath
+                )
+                updateEntryUseCase(updated)
+                onSuccess()
             }
         }
     }

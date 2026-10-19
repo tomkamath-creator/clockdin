@@ -3,11 +3,16 @@ package com.vk.clockdin.ui.paint
 
 import android.content.Context
 import androidx.compose.ui.graphics.Color
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.vk.clockdin.domain.model.MoodCategory
 import com.vk.clockdin.domain.model.MoodColor
 import com.vk.clockdin.domain.repository.MoodColorRepository
+import com.vk.clockdin.domain.repository.MoodEntryRepository
 import com.vk.clockdin.domain.repository.SettingsRepository
+import com.vk.clockdin.domain.usecase.SaveEntryUseCase
+import com.vk.clockdin.domain.usecase.UpdateEntryUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.channels.Channel
@@ -23,10 +28,15 @@ import javax.inject.Inject
 @HiltViewModel
 class PaintViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
+    savedStateHandle: SavedStateHandle,
     private val moodColorRepository: MoodColorRepository,
+    private val moodEntryRepository: MoodEntryRepository,
     private val settingsRepository: SettingsRepository,
-    val saveEntryUseCase: com.vk.clockdin.domain.usecase.SaveEntryUseCase
+    val saveEntryUseCase: SaveEntryUseCase,
+    val updateEntryUseCase: UpdateEntryUseCase
 ) : ViewModel() {
+
+    private val editEntryId: Long? = savedStateHandle.get<String>("editEntryId")?.toLongOrNull()
 
     private val _uiState = MutableStateFlow(PaintUiState())
     val uiState: StateFlow<PaintUiState> = _uiState.asStateFlow()
@@ -51,6 +61,18 @@ class PaintViewModel @Inject constructor(
                     state.copy(
                         availableColors = colors
                     )
+                }
+            }
+        }
+
+        // If editing an existing entry, load it
+        if (editEntryId != null) {
+            viewModelScope.launch {
+                val entry = moodEntryRepository.getEntryByIdDirect(editEntryId)
+                if (entry != null) {
+                    _uiState.update { state ->
+                        state.copy(editingEntry = entry)
+                    }
                 }
             }
         }
@@ -170,7 +192,44 @@ class PaintViewModel @Inject constructor(
             )
 
             _uiState.update { it.copy(isRasterizing = false) }
-            _eventChannel.send(PaintEvent.ProceedToSave(imagePath, dominantStops))
+            _eventChannel.send(
+                PaintEvent.ProceedToSave(
+                    orbImagePath = imagePath,
+                    dominantColors = dominantStops,
+                    editingEntry = state.editingEntry
+                )
+            )
+        }
+    }
+
+    fun addCustomColor(name: String, hex: String, category: MoodCategory) {
+        viewModelScope.launch {
+            val maxSort = _uiState.value.availableColors.maxOfOrNull { it.sortOrder } ?: 0
+            val cleanHex = if (hex.startsWith("#")) hex.uppercase() else "#${hex.uppercase()}"
+            val newColor = MoodColor(
+                name = name.trim().ifBlank { "Custom" },
+                hex = cleanHex,
+                category = category,
+                sortOrder = maxSort + 1,
+                isDefault = false
+            )
+            val insertedId = moodColorRepository.addColor(newColor)
+            val persistedColor = newColor.copy(id = insertedId)
+            // Immediately select and make active for painting
+            toggleMoodColor(persistedColor)
+            _uiState.update { it.copy(activeColor = persistedColor) }
+            triggerHaptic()
+        }
+    }
+
+    fun deleteCustomColor(color: MoodColor) {
+        if (color.isDefault) return
+        viewModelScope.launch {
+            moodColorRepository.deleteColorById(color.id)
+            if (_uiState.value.selectedColors.contains(color)) {
+                toggleMoodColor(color)
+            }
+            triggerHaptic()
         }
     }
 
