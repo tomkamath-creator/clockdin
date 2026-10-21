@@ -45,6 +45,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.vk.clockdin.domain.model.GradientStop
+import com.vk.clockdin.domain.model.MoodEntry
 import com.vk.clockdin.ui.save.SaveEntryBottomSheet
 import com.vk.clockdin.ui.theme.ClockdinMotion
 import com.vk.clockdin.ui.theme.GlassBorderHairline

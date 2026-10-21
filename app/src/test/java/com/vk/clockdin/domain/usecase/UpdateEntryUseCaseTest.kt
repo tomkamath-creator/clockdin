@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Before
 import org.junit.Test
 
@@ -45,7 +46,7 @@ class UpdateEntryUseCaseTest {
         updateEntryUseCase(updated)
 
         val retrieved = fakeRepository.getEntryByIdDirect(42L)
-        org.junit.Assert.assertNotNull(retrieved)
+        assertNotNull(retrieved)
         assertEquals(42L, retrieved!!.id)
         assertEquals("2026-10-15", retrieved.localDate)
         assertEquals(1700000000000L, retrieved.createdAt)
