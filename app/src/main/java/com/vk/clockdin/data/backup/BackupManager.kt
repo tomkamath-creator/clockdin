@@ -32,7 +32,8 @@ data class BackupEntry(
     val localDate: String,
     val gradientStops: List<BackupGradientStop>,
     val note: String? = null,
-    val orbBase64: String? = null
+    val orbBase64: String? = null,
+    val photosBase64: List<String> = emptyList()
 )
 
 @Serializable
@@ -62,6 +63,14 @@ class BackupManager @Inject constructor(
                 } else null
             } else null
 
+            val photosBase64 = entry.photoPath?.split("||")?.mapNotNull { path ->
+                val f = File(path.trim())
+                if (f.exists()) {
+                    val bytes = f.readBytes()
+                    Base64.encodeToString(bytes, Base64.NO_WRAP)
+                } else null
+            } ?: emptyList()
+
             BackupEntry(
                 createdAt = entry.createdAt,
                 localDate = entry.localDate,
@@ -69,7 +78,8 @@ class BackupManager @Inject constructor(
                     BackupGradientStop(it.hex, it.position, it.label)
                 },
                 note = entry.note,
-                orbBase64 = orbBase64
+                orbBase64 = orbBase64,
+                photosBase64 = photosBase64
             )
         }
 
@@ -110,6 +120,23 @@ class BackupManager @Inject constructor(
                 ""
             }
 
+            val photoPaths = if (bEntry.photosBase64.isNotEmpty()) {
+                val photosDir = File(context.filesDir, "photos").also { it.mkdirs() }
+                val restored = bEntry.photosBase64.mapIndexedNotNull { pIndex, pBase64 ->
+                    try {
+                        val pFile = File(photosDir, "restored_photo_${bEntry.createdAt}_${index}_$pIndex.jpg")
+                        val bytes = Base64.decode(pBase64, Base64.DEFAULT)
+                        FileOutputStream(pFile).use { it.write(bytes) }
+                        pFile.absolutePath
+                    } catch (_: Exception) {
+                        null
+                    }
+                }
+                if (restored.isEmpty()) null else restored.joinToString("||")
+            } else {
+                null
+            }
+
             MoodEntry(
                 createdAt = bEntry.createdAt,
                 localDate = bEntry.localDate,
@@ -118,7 +145,7 @@ class BackupManager @Inject constructor(
                 },
                 orbImagePath = orbPath,
                 note = bEntry.note,
-                photoPath = null,
+                photoPath = photoPaths,
                 songTitle = null,
                 songArtist = null
             )

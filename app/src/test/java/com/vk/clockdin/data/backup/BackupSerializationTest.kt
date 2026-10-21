@@ -45,5 +45,36 @@ class BackupSerializationTest {
         assertEquals("#FFC83D", entry.gradientStops[0].hex)
         assertEquals("Joy", entry.gradientStops[0].label)
         assertEquals("dGVzdF9iYXNlNjQ=", entry.orbBase64)
+        assertEquals(0, entry.photosBase64.size)
+    }
+
+    @Test
+    fun legacyBackupWithoutPhotos_deserializesSafely() {
+        val legacyJson = """
+            {
+                "version": 1,
+                "exportTimestamp": 1700000000000,
+                "entries": [
+                    {
+                        "createdAt": 1700000000000,
+                        "localDate": "2026-10-15",
+                        "gradientStops": [
+                            {
+                                "hex": "#FFC83D",
+                                "position": 0.0,
+                                "label": "Joy"
+                            }
+                        ],
+                        "note": "Legacy test without photos",
+                        "orbBase64": "b3JiX2RhdGE="
+                    }
+                ]
+            }
+        """.trimIndent()
+
+        val deserialized = json.decodeFromString<CosmicBackup>(legacyJson)
+        assertEquals(1, deserialized.entries.size)
+        assertEquals("Legacy test without photos", deserialized.entries[0].note)
+        assertEquals(emptyList<String>(), deserialized.entries[0].photosBase64)
     }
 }
